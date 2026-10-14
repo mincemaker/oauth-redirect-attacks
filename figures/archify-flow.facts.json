@@ -1,0 +1,4 @@
+{
+  "source": "../archify/oauth-redirect-attacks/oauth-redirect-attacks.html の図。examples/export-archify-svg.mjs で単体の SVG にした。ラベルは sources/archify-text.txt と、元の SVG の text 要素から取った",
+  "labels": ["1. 認可・認証リクエスト", "2. 認証・同意", "3. 認可・認証レスポンス（最も狙われる）", "4. トークンリクエスト", "5. 検証・ログイン", "攻撃者", "被害者ブラウザ", "悪意あるアプリ", "Client / RP", "認可サーバ / IdP", "CSRF: 攻撃者の code 付き URL を踏ませる", "Cache-Control: no-store"]
+}

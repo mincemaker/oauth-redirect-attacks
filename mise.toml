@@ -1,5 +1,6 @@
 [tools]
 node = "26.11.1"
+python = "3.12"
 
 [tasks.verify]
 description = "本文の引用・図・HTML を検証する（explainer のスクリプトは sh 前提なので Linux のコンテナで実行する）"
