@@ -10,13 +10,13 @@
 > | Referer での漏洩は、Referrer-Policy を既定より緩めたページでだけ起きる | 5 |
 > | mix-up では、ログイン失敗の画面でも code が漏れうる。画面ではなく通信で判定する | 5 |
 
-> 想定読者：Web アプリケーションの脆弱性診断はできるが、OAuth / OIDC の認可フローと、その診断観点を知らない人。HTTP、302 リダイレクト、Cookie のセッション、CSRF、セッション固定、オープンリダイレクト、プロキシでの書き換えと再送は知っている前提にした（推測。ペルソナは `../personas/web-pentester-oauth-novice.md`）。
+> 想定読者：Web アプリケーションの脆弱性診断はできるが、OAuth / OIDC の認可フローと、その診断観点を知らない人。HTTP、302 リダイレクト、Cookie のセッション、CSRF、セッション固定、オープンリダイレクト、プロキシでの書き換えと再送は知っている前提にした。
 >
 > 省いたもの：OAuth の歴史とグラントの網羅、JWT の構造、Hybrid Flow の詳細、ネイティブアプリ固有の横取り、PAR、リフレッシュトークン。リソースサーバ側の観点（盗まれたアクセストークンの送信者制約・受信者制約、DPoP、`sub` にクライアント ID が入るなりすまし）は、Zenn の本の 9・12〜14 章にある。
 >
 > 所要時間：20 分。
 >
-> 検証方法：攻撃と対策の結果は、認可サーバとクライアントを関数で書いた最小モデル `examples/flow.mjs` を実行した出力を貼った。RFC・OpenID Connect Core 1.0 の要件と Zenn の本の記述は、`sources/` に保存した原文から 1 文ずつ取り出して貼り、`checks.json` で照合した。図と診断観点の並びは `../archify/oauth-redirect-attacks/oauth-redirect-attacks.html` と、Hideki Ikeda 氏の [攻撃手法から学ぶ OAuth セキュリティベストプラクティス](https://zenn.dev/hidebike712/books/oauth-attacks-and-bcp)（v1.2.3、以下「Zenn の本」）をもとにした。
+> 検証方法：攻撃と対策の結果は、認可サーバとクライアントを関数で書いた最小モデル `examples/flow.mjs` を実行した出力を貼った。RFC・OpenID Connect Core 1.0 の要件と Zenn の本の記述は、`sources/` に保存した原文から 1 文ずつ取り出して貼り、`checks.json` で照合した。図と診断観点の並びは、archify（図を HTML で描くツール）で作った OAuth・OIDC の攻撃点の図（1 節）と、Hideki Ikeda 氏の [攻撃手法から学ぶ OAuth セキュリティベストプラクティス](https://zenn.dev/hidebike712/books/oauth-attacks-and-bcp)（v1.2.3、以下「Zenn の本」）をもとにした。
 
 この資料は、認可コードフローの診断が「どの値が、何と何を紐付けているか」を知り、その値を外す・差し替えるリクエストを送って、通るかどうかを見る作業だと伝える。
 見る値は redirect_uri・state・PKCE（code_verifier）・iss の 4 つで、照合する側が値ごとに決まっている。
@@ -67,7 +67,7 @@
 
 ## 1. 段階ごとに読み取る知識とゴール
 
-図は archify で描いた認可コードフローのシーケンス図。横の帯が 5 つの段階で、緑の実線が正規のフロー、赤の破線が攻撃と検証の位置を表す。
+図は archify（図を HTML で描くツール）で描いた認可コードフローのシーケンス図。横の帯が 5 つの段階で、緑の実線が正規のフロー、赤の破線が攻撃と検証の位置を表す。
 
 ![認可コードフローの 5 段階と攻撃点](figures/archify-flow.svg)
 
@@ -98,7 +98,7 @@ When comparing client redirection URIs against pre-registered URIs, authorizatio
 Clients and authorization servers MUST NOT expose URLs that forward the user's browser to arbitrary URIs obtained from a query parameter (open redirectors) as described in Section 4.11.
 ```
 
-モデルでは、登録値 `https://app.example/callback` に対して、前方一致（prefix）と完全一致（exact）の認可サーバに同じ要求を送った。
+モデル（認可サーバとクライアントを関数で書いた最小の実装 `examples/flow.mjs`。2〜5 節の結果の表はすべてこれを実行した出力）では、登録値 `https://app.example/callback` に対して、前方一致（prefix）と完全一致（exact）の認可サーバに同じ要求を送った。
 ワイルドカード（wildcard）の行は、Zenn の本の 2 章の例に合わせ、登録値を `https://*.app.example/callback` にして、`*` が `/` にも一致する認可サーバに送った。
 
 出典：[Zenn の本 2 章](https://zenn.dev/hidebike712/books/oauth-attacks-and-bcp/viewer/insufficient-redirect-uri-validation)
@@ -519,7 +519,7 @@ mise run verify            # 図の SVG を描き直すときは mise run verify
 | `sources/zenn/` | Zenn の本の各章の本文。著者の著作物なので Git には入れず、`examples/fetch-sources.mjs` で zenn.dev の API から取り直す（v1.2.3 を 2026-10-14 に取得して照合した）。ファイル名の `at`・`idt` は access token・ID token の略 |
 | `sources/oidc-core-1_0.txt` | [OpenID Connect Core 1.0 incorporating errata set 2](https://openid.net/specs/openid-connect-core-1_0.html) の本文。利用許諾が仕様の策定と実装の目的に限られるので Git には入れず、`examples/fetch-sources.mjs` で取り直す（2026-10-14 に取得して照合した） |
 | `sources/archify-text.txt` | 元にした archify の図から取り出した文字 |
-| `figures/archify-flow.svg` | 1 節の図。`../archify/oauth-redirect-attacks/oauth-redirect-attacks.html` から `examples/export-archify-svg.mjs` で書き出した。事実シートは `archify-flow.facts.json` |
+| `figures/archify-flow.svg` | 1 節の図。archify で作った図の HTML から、`examples/export-archify-svg.mjs` で書き出した。事実シートは `archify-flow.facts.json` |
 | `mise.toml`、`package.json` | Node の版、検証のタスク、検証に使う npm の依存 |
 | `apm.yml`、`apm.lock.yaml` | プロジェクトのスキル。yomiyasu v1.1.2 を固定 |
 
