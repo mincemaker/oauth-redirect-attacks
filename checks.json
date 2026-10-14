@@ -1,0 +1,186 @@
+{
+  "checks": [
+    {
+      "name": "flow",
+      "cmd": "node examples/flow.mjs",
+      "expect": [
+        "[prefix] https://app.example/callback.attacker.example → 受理 https://app.example/callback.attacker.example",
+        "[prefix] https://app.example/callback/../logout?next=https://attacker.example → 受理 https://app.example/logout",
+        "[exact] https://app.example/callback.attacker.example → invalid_request（redirect_uri 不一致）",
+        "[wildcard https://*.app.example/callback] https://attacker.example/.app.example/callback → 受理 https://attacker.example/.app.example/callback",
+        "[exact] http://127.0.0.1:51004/cb → 受理 http://127.0.0.1:51004/cb",
+        "[state検証=false PKCE=false] → ログイン成立：セッション victim-session が attacker として扱われる",
+        "[state検証=false PKCE=true] → トークン取得に失敗：invalid_grant（code_verifier 不一致）",
+        "[state検証=true PKCE=false] → state 不一致で拒否",
+        "[state検証=true PKCE=false] → ログイン成立：セッション attacker-session が victim として扱われる",
+        "[state検証=true PKCE=true] → トークン取得に失敗：invalid_grant（code_verifier 不一致）",
+        "[パブリッククライアント PKCE=false] 攻撃者が /token を直接呼ぶ → access_token 発行",
+        "[パブリッククライアント PKCE=true] 攻撃者が /token を直接呼ぶ → invalid_grant（code_verifier 不一致）",
+        "[ダウングレード対策=false] → ログイン成立：セッション victim-session が attacker として扱われる",
+        "[ダウングレード対策=true] → トークン取得に失敗：invalid_grant（PKCE ダウングレード）",
+        "[PKCE 必須] → 認可リクエストで拒否：invalid_request（code_challenge が無い）",
+        "同じ code で 2 回目 → invalid_grant（code 再利用。発行済みトークンを失効）",
+        "1 回目の access_token → 失効",
+        "redirect_uri を /callback2 に変えて交換 → invalid_grant（redirect_uri が認可リクエストと違う）",
+        "[iss検証=false] → トークン取得に失敗：invalid_grant。攻撃者の認可サーバに届いた code 1 個",
+        "[iss検証=true] → iss 不一致で拒否（code を送らない）。攻撃者の認可サーバに届いた code 0 個"
+      ]
+    },
+    {
+      "name": "rfc-redirect",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"When comparing client redirection URIs\" \"Clients and authorization servers MUST NOT expose URLs\"",
+      "expect": [
+        "authorization servers MUST utilize exact string matching except for port numbers in localhost redirection URIs of native apps",
+        "(open redirectors)"
+      ]
+    },
+    {
+      "name": "zenn-wildcard",
+      "cmd": "node examples/rfc-quote.mjs sources/zenn/02-insufficient-redirect-uri-validation.txt \"認可サーバーは、ワイルドカード\"",
+      "expect": [
+        "「/ を含む任意の文字列」として解釈する不適切なパターンマッチ"
+      ]
+    },
+    {
+      "name": "rfc-loopback",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc8252.txt \"The authorization server MUST allow any port\"",
+      "expect": [
+        "The authorization server MUST allow any port to be specified at the time of the request for loopback IP redirect URIs"
+      ]
+    },
+    {
+      "name": "rfc-csrf",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"Clients that have ensured\" \"In OpenID Connect flows, the nonce\" \"Otherwise, one-time use CSRF\"",
+      "expect": [
+        "MAY rely on the CSRF protection provided by PKCE.",
+        "In OpenID Connect flows, the nonce parameter provides CSRF protection.",
+        "one-time use CSRF tokens carried in the state parameter that are securely bound to the user agent MUST be used"
+      ]
+    },
+    {
+      "name": "zenn-session",
+      "cmd": "node examples/rfc-quote.mjs sources/zenn/07-csrf.txt \"本記事における「セッション」とは\" \"あらかじめ Session Fixation\"",
+      "expect": [
+        "攻撃者による推測や改竄ができない、セキュアに管理された状態を指します。",
+        "あらかじめ Session Fixation 攻撃などへの対策が講じられていることが前提となります。"
+      ]
+    },
+    {
+      "name": "rfc-injection",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"From the attacker's device\" \"In the response of the authorization server to the legitimate client\" \"Asymmetric methods for client authentication\" \"Public clients MUST use PKCE\" \"For confidential clients, the use of PKCE\"",
+      "expect": [
+        "From the attacker's device, the attacker starts a regular OAuth authorization process with the legitimate client.",
+        "the attacker replaces the newly created authorization code with the stolen authorization code.",
+        "Asymmetric methods for client authentication do not stop this attack, as the legitimate client authenticates at the token endpoint.",
+        "Public clients MUST use PKCE",
+        "For confidential clients, the use of PKCE [RFC7636] is RECOMMENDED"
+      ]
+    },
+    {
+      "name": "rfc-public",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"It is important to note that nonce does not protect\" \"Instead, an attacker can directly call\"",
+      "expect": [
+        "It is important to note that nonce does not protect authorization codes of public clients, as an attacker does not need to execute an authorization code injection attack.",
+        "Instead, an attacker can directly call the token endpoint with the stolen authorization code."
+      ]
+    },
+    {
+      "name": "rfc-nonce",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"If an attacker injects an authorization code in the authorization response\"",
+      "expect": [
+        "the nonce value in the client session and the nonce value in the ID Token received from the token endpoint will not match, and the attack is detected."
+      ]
+    },
+    {
+      "name": "rfc-s256",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"Currently, S256 is the only such method\"",
+      "expect": [
+        "Currently, S256 is the only such method."
+      ]
+    },
+    {
+      "name": "rfc-downgrade",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"The first prerequisite for this attack\" \"The second prerequisite for this attack\" \"Using state properly would prevent this attack\" \"However, practice has shown\" \"Authorization servers MUST mitigate PKCE downgrade\"",
+      "expect": [
+        "The first prerequisite for this attack is that there is an attacker-controllable flag in the authorization request that enables or disables PKCE for the particular flow.",
+        "The second prerequisite for this attack is that the client is not using state at all (e.g., because the client relies on PKCE for CSRF prevention) or that the client is not checking state correctly.",
+        "Using state properly would prevent this attack.",
+        "However, practice has shown that many OAuth clients do not use or check state properly.",
+        "a token request containing a code_verifier parameter is accepted only if a code_challenge parameter was present in the authorization request"
+      ]
+    },
+    {
+      "name": "rfc-code-reuse",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc6749.txt \"If an authorization code is used more than once\" \"parameter is present if the\"",
+      "expect": [
+        "the authorization server MUST deny the request and SHOULD revoke (when possible) all tokens previously issued based on that authorization code.",
+        "if included ensure that their values are identical."
+      ]
+    },
+    {
+      "name": "rfc-referer",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"The page rendered as a result of the OAuth authorization response\"",
+      "expect": [
+        "SHOULD NOT include third-party resources or links to external sites."
+      ]
+    },
+    {
+      "name": "zenn-referer",
+      "cmd": "node examples/rfc-quote.mjs sources/zenn/03-credential-leakage-via-referer-headers.txt \"主要なモダンブラウザでデフォルト\" \"攻撃者が S_VIC を取得できてしまうと\"",
+      "expect": [
+        "主要なモダンブラウザでデフォルトとなっている strict-origin-when-cross-origin では、cross-origin のリクエスト内の Referer ヘッダーに参照元 URL のパスやクエリは含まれないため、本攻撃は成立しない点に注意してください。",
+        "攻撃者が S_VIC を取得できてしまうと、state による CSRF 保護は失われ、攻撃者は CSRF を実行できる可能性があります。"
+      ]
+    },
+    {
+      "name": "rfc-history",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"Clients MUST NOT pass access tokens in a URI query\"",
+      "expect": [
+        "Clients MUST NOT pass access tokens in a URI query parameter in the way described in Section 2.3 of [RFC6750]."
+      ]
+    },
+    {
+      "name": "zenn-samesite",
+      "cmd": "node examples/rfc-quote.mjs sources/zenn/04-credential-leakage-via-browser-history.txt \"コールバック処理が SameSite=Lax\"",
+      "expect": [
+        "コールバック処理が SameSite=Lax のセッション Cookie に依存している場合、その Cookie はこの POST では送信されず、ユーザーのセッションを復元できないために state の検証などに失敗する可能性があります。"
+      ]
+    },
+    {
+      "name": "rfc-mixup",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"When an OAuth client can interact\"",
+      "expect": [
+        "a defense against mix-up attacks (see Section 4.4) is REQUIRED."
+      ]
+    },
+    {
+      "name": "rfc-iss",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9207.txt \"If the value does not match the expected\"",
+      "expect": [
+        "clients MUST reject the authorization response and MUST NOT proceed with the authorization grant."
+      ]
+    },
+    {
+      "name": "zenn-mixup",
+      "cmd": "node examples/rfc-quote.mjs sources/zenn/11-mixup-attack.txt \"攻撃者が H-AS に悪意のあるクライアント\"",
+      "expect": [
+        "攻撃者が H-AS に悪意のあるクライアント (クライアント ID = CID_EVIL) を登録し、そのクライアントが https://client.example.com/cb/a-as をリダイレクト URI として使用する場合、本対抗策は突破されてしまいます。"
+      ]
+    },
+    {
+      "name": "rfc-implicit",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc10017.txt \"Browser-based clients MUST use the Authorization\"",
+      "expect": [
+        "Browser-based clients MUST use the Authorization Code grant type and MUST NOT use the Implicit grant type to obtain access tokens."
+      ]
+    },
+    {
+      "name": "zenn-at-injection",
+      "cmd": "node examples/rfc-quote.mjs sources/zenn/06-at-injection.txt \"攻撃者が開始した認可フローの認可レスポンスには\" \"純粋な OAuth のインプリシットフロー\"",
+      "expect": [
+        "攻撃者が開始した認可フローの認可レスポンスには正当な state パラメーター S_ATK が含まれるため、クライアントは本攻撃を CSRF (クロスサイトリクエストフォージェリー) として検知することができません。",
+        "純粋な OAuth のインプリシットフロー (response_type=token) において本攻撃を検知することはできませんが"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,243 @@
+
+OAuth・OIDC リダイレクト系フローの攻撃点と診断観点 ダイアグラム
+ダーク
+スタイル
+ビジュアルアイデンティティ
+S
+Sで循環
+クラシック
+安定した技術標準
+シグナルフロー
+動きを強調した表現
+ブループリント
+エンジニアリングレビュー向け
+エディトリアル
+発行・公開ノート向け
+ライブ
+プレゼンテーション
+        エクスポート 
+ダイアグラムをエクスポート
+持ち運びやすくクリーンな出力
+E
+共有
+ルートシェアカード
+1200×630 PNG
+到達範囲シェアカード
+1200×630 PNG
+ダイアグラムをコピー
+PNGをクリップボードへ
+画像
+PNG
+無劣化画像
+JPEG
+コンパクト画像
+WebP
+モダン画像
+ベクター & モーション
+SVG · Auto
+Matches host theme
+SVG · Light
+Always light
+SVG · Dark
+Always dark
+WebM
+6秒のモーション
+OAuth・OIDC リダイレクト系フローの攻撃点と診断観点
+       [SVG] 
+ダイアグラムガイド
+Explore this system
+×
+コンパイル済みセマンティクスを検査中
+01
+任意のノードを検索
+ラベル、役割、種類、固定IDで検索します。
+/
+02
+ルートをトレース
+2つのセマンティックノードが編集済みの方向でどう接続されているかを確認します。
+R
+03
+システム全体を表示
+ライブビューポートと固定ノードを持つセマンティックレーダーを開きます。
+M
+04
+セマンティックな種類を比較
+役割を数え、そのトラフィックを表示し、直接編集されたリンクを比較します。
+L
+05
+プレゼンテーションステージに入る
+エクスポートを変更せずに、ライブダイアグラムにビューポート全体を割り当てます。
+F
+E
+ エクスポート
+T
+ テーマ
+S
+ スタイル
+0
+ リセット
++
+ 拡大
+-
+ 縮小
+Esc
+ 閉じる
+ノードを検索
+×
+⌕
+/
+一致するノードがありません
+セマンティックパスポート
+検証済みソース
+編集済みの到達範囲
+アップストリーム
+0
+ダウンストリーム
+0
+×
+リンクをコピー
+関係
+ルートプローブ
+開始ノードを選択
+開始点を検索
+リンクをコピー
+クリア
+ダイアグラム上で2つのセマンティックノードを選択してください
+←
+▶
+ジャーニー
+→
+概要
+起点を選択してから終点を選択してください。方向が重要です。
+セマンティックレンズ
+システムの役割を比較
+×
+セマンティックな種類を最大2つ選択してください。1つ選ぶと実際のトラフィックが表示され、2つ選ぶと直接の編集済み関係のみを比較します。
+種類を選択すると、そのノードと接する関係を検査できます。
+リンクをコピー
+クリア
+セマンティックレーダー
+概要を構築中
+レーダーを開く
+×
+ノードをクリック
+ドラッグしてパン
+セマンティックレーダーにはさらにMAPスペースが必要です。
+Notes & index
+パス
+マップ
+レンズ
+閲覧
+100%
+ステップ別の確認ポイント
+1. 認可・認証リクエスト: state・nonce・code_verifier をセッション毎に推測困難な値で生成し紐付けているか。code_challenge_method は S256 か 
+RFC 9700 §2.1.1
+RFC 7636 §7.2
+1. 認可・認証リクエスト: 認可サーバが redirect_uri を完全一致で照合し、部分一致・ワイルドカード・オープンリダイレクタ経由を許していないか。例外として、ネイティブアプリのループバック IP（127.0.0.1 や ::1）の redirect URI ではポート番号の違いを許可しなければならない。localhost という名前の使用は非推奨 
+RFC 8252 §7.3
+RFC 8252 §8.3
+RFC 9700 §4.1.3
+RFC 9700 §4.11.1
+1. 認可・認証リクエスト: PAR を使う場合、認可リクエストは client 認証付きで PAR エンドポイントに POST され、redirect_uri などはそこで検証される。出所と完全性を検証できるので、認可サーバは redirect_uri をそれ以上確かめずに信頼してよい（MAY）。ただし範囲が減るのは、PAR を経由しない認可リクエストを認可サーバが拒否している場合だけ 
+RFC 9126 §2.1
+RFC 9126 §4
+RFC 9700 §4.1.3
+2. 認証・同意: ログイン済みや auto-approval で同意画面が省略される場合、偽装した認可リクエストを踏むだけでレスポンスまで進む前提で考える
+3. 認可・認証レスポンス: クエリの code が Referer・サーバログから、フラグメントも含めた URL がブラウザ履歴から漏れないか 
+RFC 9700 §4.2.4
+RFC 9700 §4.3
+3. 認可・認証レスポンス: state の不一致・欠落でエラーになるか。フラグメントはサーバに送られないので、Implicit・Hybrid Flow の ID トークンは JS で取り出して検証するか、response_mode=form_post でバックエンドに POST させて検証しているか 
+RFC 9700 §4.7.1
+3. 認可・認証レスポンス: 複数の認可サーバを使う場合、認可レスポンスの iss パラメータ（RFC 9207）か認可レスポンスに含まれる ID トークンの iss を、トークンリクエストの前に検証しているか。トークンレスポンスの ID トークンで確かめるのでは code を送った後で手遅れ 
+RFC 9700 §4.4.2.1
+RFC 9207 §2.4
+4. トークンリクエスト: code は 1 回限りか、再利用を検知したらその code で発行済みのトークンも失効させるか、client に紐付くか、認可リクエストと同一の redirect_uri か、PKCE を検証するか。code_challenge なしで発行した code を code_verifier 付きで交換させないか。トークンレスポンスは Cache-Control: no-store か 
+RFC 6749 §4.1.2
+RFC 6749 §4.1.3
+RFC 9700 §4.8.2
+5. 検証・ログイン: ID トークンの署名・iss・aud・exp・nonce を検証し、検証後に nonce を無効化しているか
+攻撃と対策パラメータ
+CSRF: 攻撃者の code・token を被害者のアプリセッションに適用させる。Authorization Code Grant・Implicit Grant・Hybrid Flow のすべてが対象。対策 state（PKCE・nonce でも検知可）
+リプレイ攻撃: 他人の ID トークンを攻撃者のセッションで使う。OIDC の Implicit Flow と Hybrid Flow が対象。対策 nonce
+認可コード横取り: 同じカスタムスキームのアプリが code を受け取る。Authorization Code Grant と、response_type に code を含む Hybrid Flow のネイティブアプリが対象。対策 PKCE
+コードインジェクション: 他人の未使用 code を攻撃者のセッションで使う。Authorization Code Grant と、response_type に code を含む Hybrid Flow が対象。対策 PKCE・nonce・c_hash
+トークンインジェクション: 他人の access_token を攻撃者のセッションで使う。Implicit Grant と、response_type に token を含む Hybrid Flow が対象。OIDC は at_hash、OAuth は仕様内の対策なし。このため RFC 9700 は、認可レスポンスでの注入と漏洩経路を防げない限り Implicit Grant を使うべきでない（SHOULD NOT）とし、response_type code や code id_token のようにトークンレスポンスでトークンを受け取る方式を推奨する 
+RFC 9700 §2.1.2
+mix-up 攻撃: 複数の認可サーバを使うクライアントに、別の認可サーバの応答として code・token を処理させる。この構成では対策が必須で、トークンリクエストの前に、認可レスポンスの iss パラメータ（RFC 9207）か認可レスポンスに含まれる ID トークンの iss を検証する 
+RFC 9700 §4.4.2.1
+RFC 9207 §2.4
+パラメータが紐付けるもの
+state: リクエスト時のセッション ↔ レスポンス受信時のセッション。レスポンス時点で検知
+nonce: 認証リクエスト ↔ ID トークン。Authorization Code Flow ではトークンレスポンス後、Implicit Flow と Hybrid Flow では認証レスポンス時点で検知
+PKCE: 認可リクエスト ↔ トークンリクエスト。トークンリクエスト時に認可サーバが検知。public client は必須（MUST）、confidential client は推奨（RECOMMENDED） 
+RFC 9700 §2.1.1
+c_hash: レスポンス内の code ↔ ID トークン。認証レスポンス時点で検知
+at_hash: レスポンス内の access_token ↔ ID トークン
+OAuth の response_type 別
+サーバーサイド "code": CSRF・コード注入 → 最少は PKCE、早期検知なら state + PKCE
+ネイティブ "code": CSRF・横取り・コード注入 → 最少は PKCE、早期検知なら state + PKCE
+JS アプリ "code": CSRF・コード注入 → 最少は PKCE、早期検知なら state + PKCE
+Implicit Grant など response_type に "token" を含むもの: 受け取った access_token が自分宛か誰も確認できない → 使わず code + PKCE へ。RFC 10017 はブラウザアプリでの Implicit Grant を禁止（MUST NOT） 
+RFC 9700 §2.1.2
+RFC 10017 §7.2
+OIDC の response_type 別
+サーバーサイド "code": 最少は nonce か PKCE、早期は state + nonce（または PKCE）。nonce で PKCE を代替できるのは confidential client だけ 
+RFC 9700 §2.1.1
+サーバーサイド "code id_token": 最少は nonce か PKCE、早期は応答の ID トークンの nonce + c_hash
+ネイティブ "code": CSRF・横取り・コード注入。最少は PKCE、早期は state + トークンレスポンスの ID トークンの nonce + PKCE
+ネイティブ "code id_token": CSRF・横取り・コード注入。最少は PKCE、早期は応答の ID トークンの nonce + c_hash + PKCE。カスタムスキームを横取りされると ID トークンに含まれる個人情報も漏れるため、claimed https の redirect URI か response_type code を推奨 
+RFC 8252 §7.2
+JS "token id_token": CSRF・トークン注入 → nonce + at_hash。RFC 10017 はブラウザアプリでこの構成を禁止しているため、既存実装を診断するときの観点 
+RFC 10017 §7.2
+ネイティブアプリで response_type に "token" を含むもの: 同じスキームのアプリに token を取られるため使わない
+バックエンドありの Hybrid Flow
+RFC 10017 で最も安全とされる構成は BFF。フロントは Cookie のセッションだけを持ち、code の交換とトークンの管理はすべてバックエンドで行う 
+RFC 10017 §6.1
+ネイティブ "code id_token": フロントは PKCE（早期は nonce + c_hash）、バックエンドに渡す ID トークンは nonce で CSRF・リプレイ対策
+JS "code token": フロントは state + 独自 API で token 注入対策、バックエンドは nonce か PKCE。RFC 10017 はブラウザアプリでこの構成を禁止しているため、既存実装を診断するときの観点 
+RFC 10017 §7.2
+JS "token id_token": フロントは nonce + at_hash、バックエンドは nonce で CSRF・リプレイ対策。RFC 10017 はブラウザアプリでこの構成を禁止しているため、既存実装を診断するときの観点 
+RFC 10017 §7.2
+JS "token code id_token": フロントは nonce + at_hash、バックエンドは最少なら nonce か PKCE、早期なら応答の ID トークンの nonce + c_hash。RFC 10017 はブラウザアプリでこの構成を禁止しているため、既存実装を診断するときの観点 
+RFC 10017 §7.2
+応答の ID トークンはデタッチ署名として使い、認証にはトークンレスポンスの ID トークンを使う
+state・nonce・code_verifier はバックエンドで生成しフロントへ共有する
+診断チェックリスト
+state を削除・改ざん・別セッションの値に差し替えてもログインや連携が完了しないか 
+RFC 6749 §10.12
+RFC 9700 §4.7.1
+攻撃者アカウントで得た code を被害者のブラウザで /callback に送り、アカウント紐付けが起きないか 
+RFC 9700 §4.7.1
+別セッションで得た code・ID トークンを送り、nonce・c_hash 不一致で拒否されるか 
+RFC 9700 §4.5.3
+code_verifier を省略・改ざんしたトークンリクエストが拒否されるか、plain が許されていないか 
+RFC 9700 §2.1.1
+RFC 7636 §7.2
+同じ code の再利用、別 client_id での交換が拒否されるか。再利用後に、最初の交換で得た access_token・refresh_token が失効しているか 
+RFC 6749 §4.1.2
+OAuth 認証のアプリに、他アプリ宛てや同じアプリの他ユーザーの access_token を渡してログインできてしまわないか 
+RFC 9700 §4.6
+redirect_uri をサブドメイン・パス・クエリ違いに変えても拒否されるか、callback がオープンリダイレクタでないか。ネイティブアプリのループバック IP の redirect URI でポート違いが許可されるのは正しい挙動 
+RFC 8252 §7.3
+RFC 9700 §4.1.3
+RFC 9700 §4.11.1
+callback ページが外部リソースを読み込み Referer で code を漏らさないか、サーバログに code を残していないか 
+RFC 9700 §4.2.4
+トークンリクエストの redirect_uri を認可リクエスト時と変えて送ると拒否されるか 
+RFC 6749 §4.1.3
+複数の認可サーバを使う場合、認可サーバ B の応答を認可サーバ A のフローとして受け付けず、トークンリクエストを送る前に iss の不一致で止まるか 
+RFC 9207 §2.4
+code_challenge を付けずに得た code を、code_verifier 付きのトークンリクエストで交換できてしまわないか（PKCE ダウングレード） 
+RFC 9700 §4.8.2
+PAR を必須にしている場合、request_uri なしの従来の認可リクエストが invalid_request で拒否されるか。通ってしまうなら redirect_uri の試験は省略できない 
+RFC 9126 §4
+RFC 9126 §5
+PAR エンドポイントで client 認証が必須か。未認証のクライアントが新しい redirect_uri を登録できないか 
+RFC 9126 §2.1
+RFC 9126 §7.2
+request_uri が別の client_id で使えないか、期限切れや再利用で拒否されるか。PAR の中身に PKCE・state・nonce を含めて差し替えに備えているか 
+RFC 9126 §2.2
+RFC 9126 §7.3
+RFC 9126 §7.5
+ノード一覧
+

@@ -1,0 +1,27 @@
+---
+config:
+  flowchart:
+    wrappingWidth: 480
+---
+flowchart TD
+  s1["1. 認可リクエスト<br/>GET /authorize<br/>redirect_uri・state・code_challenge"]
+  s2["2. 認証・同意<br/>ログイン・同意画面"]
+  s3["3. 認可レスポンス（最も狙われる）<br/>302 /callback?code・state・iss"]
+  s4["4. トークンリクエスト<br/>POST /token<br/>code・redirect_uri・code_verifier"]
+  s5["5. 検証・ログイン<br/>ログイン / 連携完了"]
+  redir("redirect_uri の改ざん<br/>止める：認可サーバ<br/>完全一致で照合")
+  leak("code の漏洩<br/>Referer・サーバログ<br/>止める：クライアント<br/>外部へ送らない")
+  csrf("CSRF<br/>攻撃者の code 付き URL を踏ませる<br/>止める：クライアント<br/>state")
+  mix("mix-up<br/>止める：クライアント<br/>トークンリクエストの前に iss")
+  inj("注入<br/>漏洩した他人の code を自分のセッションで送る<br/>止める：認可サーバ<br/>PKCE")
+  down("PKCE ダウングレード・code の再利用<br/>止める：認可サーバ<br/>challenge なしの verifier を拒否・1 回限り")
+  s1 --> s2
+  s2 --> s3
+  s3 --> s4
+  s4 --> s5
+  redir -.-> s1
+  leak -.-> s3
+  csrf -.-> s3
+  mix -.-> s3
+  inj -.-> s4
+  down -.-> s4

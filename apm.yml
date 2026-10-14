@@ -1,0 +1,9 @@
+name: oauth-redirect-attacks
+version: 1.0.0
+targets:
+  - claude
+dependencies:
+  apm:
+    # verify-doc.mjs が .claude/skills/yomiyasu/scripts/yomiyasu_lint.py で日本語を点検する
+    - nanaism/yomiyasu/skills/yomiyasu#v1.1.2
+scripts: {}

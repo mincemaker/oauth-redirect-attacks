@@ -1,0 +1,6 @@
+{
+  "source": "../archify/oauth-redirect-attacks/oauth-redirect-attacks.html の図のラベル（sources/archify-text.txt と SVG の text 要素）と、examples/flow.mjs の各節で拒否した側",
+  "labels": ["1. 認可リクエスト", "2. 認証・同意", "3. 認可レスポンス（最も狙われる）", "4. トークンリクエスト", "5. 検証・ログイン", "攻撃者の code 付き URL を踏ませる", "漏洩した他人の code を自分のセッションで送る", "Referer・サーバログ", "PKCE ダウングレード", "mix-up"],
+  "forbidden": ["クライアント：PKCE", "認可サーバ：state"],
+  "edges": ["s1->s2", "s2->s3", "s3->s4", "s4->s5", "redir->s1", "leak->s3", "csrf->s3", "inj->s4", "mix->s3", "down->s4"]
+}

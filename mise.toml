@@ -1,0 +1,11 @@
+[tools]
+node = "26.11.1"
+
+[tasks.verify]
+description = "本文の引用・図・HTML を検証する（explainer のスクリプトは sh 前提なので Linux のコンテナで実行する）"
+run = """
+podman run --rm -v "{{config_root}}:/work" -v "{{env.USERPROFILE}}/.claude/skills/explainer:/skill:ro" \
+  -v explainer-oauth-node-modules:/work/node_modules -w /work -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+  mcr.microsoft.com/playwright:v1.64.0-noble \
+  bash -c "npm ci --no-audit --no-fund >/dev/null && node /skill/scripts/verify-doc.mjs . {{arg(name='write', default='')}}"
+"""

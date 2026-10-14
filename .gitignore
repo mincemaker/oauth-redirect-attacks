@@ -1,0 +1,28 @@
+dist/
+test-results/
+figures/.figure-check/
+.vlmkit/
+.first-reader/
+
+# Claude Code のサンドボックスが作業ディレクトリに置く仮のファイル（実際のディスクには無い）
+.bash_profile
+.bashrc
+.gitconfig
+.gitmodules
+.idea
+.mcp.json
+.profile
+.ripgreprc
+.zprofile
+.zshrc
+id_ed25519
+id_rsa
+.claude/
+node_modules/
+
+
+# APM dependencies
+apm_modules/
+
+# Zenn の本の本文は著者の著作物なので入れない（examples/fetch-zenn.mjs で取り直す）
+sources/zenn/*.txt
