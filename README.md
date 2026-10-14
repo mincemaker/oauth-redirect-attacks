@@ -16,7 +16,7 @@
 >
 > 所要時間：20 分。
 >
-> 検証方法：攻撃と対策の結果は、認可サーバとクライアントを関数で書いた最小モデル `examples/flow.mjs` を実行した出力を貼った。RFC・OpenID Connect Core 1.0 の要件と Zenn の本の記述は、`sources/` に保存した原文から 1 文ずつ取り出して貼り、`checks.json` で照合した。図と診断観点の並びは、archify（図を HTML で描くツール）で作った OAuth・OIDC の攻撃点の図（1 節）と、Hideki Ikeda 氏の [攻撃手法から学ぶ OAuth セキュリティベストプラクティス](https://zenn.dev/hidebike712/books/oauth-attacks-and-bcp)（v1.2.3、以下「Zenn の本」）をもとにした。
+> 検証方法：攻撃と対策の結果は、認可サーバとクライアントを関数で書いた再現スクリプト `examples/flow.mjs` を実行した出力を貼った。RFC・OpenID Connect Core 1.0 の要件と Zenn の本の記述は、`sources/` に保存した原文から 1 文ずつ取り出して貼り、`checks.json` で照合した。図と診断観点の並びは、archify で作った OAuth・OIDC の攻撃点の図（1 節）と、Hideki Ikeda 氏の [攻撃手法から学ぶ OAuth セキュリティベストプラクティス](https://zenn.dev/hidebike712/books/oauth-attacks-and-bcp)（v1.2.3、以下「Zenn の本」）をもとにした。
 
 この資料は、認可コードフローの診断が「どの値が、何と何を紐付けているか」を知り、その値を外す・差し替えるリクエストを送って、通るかどうかを見る作業だと伝える。
 見る値は redirect_uri・state・PKCE（code_verifier）・iss の 4 つで、照合する側が値ごとに決まっている。
@@ -48,6 +48,7 @@
 利用者のブラウザ、診断対象のアプリ（クライアント。OIDC では RP とも呼ぶ）、ログインを担う認可サーバ（OIDC では IdP や OP とも呼ぶ）。
 クライアントはブラウザを認可サーバへ 302 で送り、認可サーバはログインと同意の後、ブラウザをクライアントの `/callback` へ認可コード（code）付きで 302 で戻す。
 クライアントはその code を、裏で認可サーバのトークンエンドポイントへ送り、アクセストークンと交換する。
+「Google でログイン」のように外部の IdP を使うアプリでは、認可サーバは診断を依頼した組織のものではない。下の表で照合する側が認可サーバの行を試してよいかは診断の範囲の取り決めしだいで、通ったら IdP の不備として分けて報告する（4 節）。
 
 | 書き換えるもの | 何を紐付けているか | 通ったら | 照合する側（根拠） |
 |---|---|---|---|
@@ -81,9 +82,16 @@
 | 4. トークンリクエスト | ブラウザを通らない裏の通信で、code が誰のものかを PKCE で確かめるのは認可サーバ | トークンエンドポイントの結果を、クライアントではなく認可サーバの不備として切り分けて報告できる | 3・4 |
 | 5. 検証・ログイン | OIDC では、ID トークンの nonce をクライアントが照合する | ID トークンの `iss`・`aud`・`exp`・`nonce` の検証は必須で、署名の検証はトークンエンドポイントから受け取った ID トークンなら TLS のサーバー検証で代えてよい、と区別できる | 6 |
 
-攻撃が集まるのは 3 の認可レスポンス。
-code はブラウザを経由して URL のクエリで届くので、ブラウザの持ち主（攻撃者自身）が書き換えられ、Referer や履歴にも残る。
-4 のトークンリクエストはクライアントから認可サーバへの裏の通信で、ブラウザは関わらない。そのため、3 で届いた code が誰のものかを、4 で認可サーバが確かめる仕組み（PKCE）が要る。
+攻撃者が被害者に踏ませる URL は 2 つ。
+
+| 踏ませる URL | 狙い | 攻撃 |
+|---|---|---|
+| 1 の認可リクエスト | 被害者の code を奪う | redirect_uri の緩い照合、mix-up |
+| 3 のコールバック | 攻撃者の code を被害者に入れる | CSRF、PKCE ダウングレード |
+
+code は 3 でブラウザの URL に載るので、書き換えられ、Referer や履歴にも残る。
+
+4 は裏の通信なので、届いた code が誰のものかは認可サーバが PKCE で確かめる（3 節）。
 
 ## 2. redirect_uri は、認可サーバが完全一致で照合する
 
@@ -98,7 +106,9 @@ When comparing client redirection URIs against pre-registered URIs, authorizatio
 Clients and authorization servers MUST NOT expose URLs that forward the user's browser to arbitrary URIs obtained from a query parameter (open redirectors) as described in Section 4.11.
 ```
 
-モデル（認可サーバとクライアントを関数で書いた最小の実装 `examples/flow.mjs`。2〜5 節の結果の表はすべてこれを実行した出力）では、登録値 `https://app.example/callback` に対して、前方一致（prefix）と完全一致（exact）の認可サーバに同じ要求を送った。
+再現スクリプト `examples/flow.mjs` では、認可サーバとクライアントを関数で書き、脆弱な設定と正しい設定に同じリクエストを送って結果を比べた。2〜5 節の結果の表はすべてこれの出力で、実物の挙動はハンズオンで確かめる。
+
+ここでは、登録値 `https://app.example/callback` に対して、前方一致（prefix）と完全一致（exact）の認可サーバに同じ要求を送った。
 ワイルドカード（wildcard）の行は、Zenn の本の 2 章の例に合わせ、登録値を `https://*.app.example/callback` にして、`*` が `/` にも一致する認可サーバに送った。
 
 出典：[Zenn の本 2 章](https://zenn.dev/hidebike712/books/oauth-attacks-and-bcp/viewer/insufficient-redirect-uri-validation)
@@ -184,7 +194,7 @@ Public clients MUST use PKCE [RFC7636] to this end, as motivated in Section 4.5.
 For confidential clients, the use of PKCE [RFC7636] is RECOMMENDED, as it provides strong protection against misuse and injection of authorization codes as described in Section 4.5.3.1.
 ```
 
-モデルで、state を検証するクライアントに、被害者の code と攻撃者自身の state を送った。
+再現スクリプトで、state を検証するクライアントに、被害者の code と攻撃者自身の state を送った。
 後の 2 行は、client secret を持たないパブリッククライアント（SPA やネイティブアプリ）の code を、攻撃者がクライアントを通さず `/token` へ直接送った結果。
 
 <!-- output: flow -->
@@ -513,7 +523,7 @@ mise run verify            # 図の SVG を描き直すときは mise run verify
 
 | ファイル | 内容 |
 |---|---|
-| `examples/flow.mjs` | 認可サーバとクライアントを関数で書いた最小モデル。2〜5 節の出力はこれの実行結果 |
+| `examples/flow.mjs` | 認可サーバとクライアントを関数で書いた再現スクリプト。2〜5 節の出力はこれの実行結果 |
 | `examples/rfc-quote.mjs` | `sources/` の RFC と Zenn の章から、指定した書き出しの 1 文を、改行と改ページをつないで取り出す |
 | `sources/rfc*.txt` | 照合に使った RFC 6749・7636・8252・9126・9207・9700・10017 のテキスト版（2026-10-14 に rfc-editor.org から取得） |
 | `sources/zenn/` | Zenn の本の各章の本文。著者の著作物なので Git には入れず、`examples/fetch-sources.mjs` で zenn.dev の API から取り直す（v1.2.3 を 2026-10-14 に取得して照合した）。ファイル名の `at`・`idt` は access token・ID token の略 |
