@@ -24,5 +24,6 @@ node_modules/
 # APM dependencies
 apm_modules/
 
-# Zenn の本の本文は著者の著作物なので入れない（examples/fetch-zenn.mjs で取り直す）
+# 転載できない原文は入れない（examples/fetch-sources.mjs で取り直す）
 sources/zenn/*.txt
+sources/oidc-core-1_0.txt

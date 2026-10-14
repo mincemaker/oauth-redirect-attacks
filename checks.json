@@ -175,11 +175,39 @@
       ]
     },
     {
-      "name": "zenn-at-injection",
-      "cmd": "node examples/rfc-quote.mjs sources/zenn/06-at-injection.txt \"攻撃者が開始した認可フローの認可レスポンスには\" \"純粋な OAuth のインプリシットフロー\"",
+      "name": "rfc-at-injection",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"Since the response includes the state value\" \"There is no way to detect such an injection\" \"In OpenID Connect, the attack can be mitigated\"",
       "expect": [
-        "攻撃者が開始した認可フローの認可レスポンスには正当な state パラメーター S_ATK が含まれるため、クライアントは本攻撃を CSRF (クロスサイトリクエストフォージェリー) として検知することができません。",
-        "純粋な OAuth のインプリシットフロー (response_type=token) において本攻撃を検知することはできませんが"
+        "the client does not treat the response as a CSRF attack and uses the access token injected by the attacker.",
+        "There is no way to detect such an injection attack in pure-OAuth flows",
+        "the authorization response additionally contains an ID Token containing the at_hash claim."
+      ]
+    },
+    {
+      "name": "oidc-at-hash",
+      "cmd": "node examples/rfc-quote.mjs sources/oidc-core-1_0.txt \"The value of at_hash in the ID Token MUST\"",
+      "expect": [
+        "The value of at_hash in the ID Token MUST match the value produced in the previous step."
+      ]
+    },
+    {
+      "name": "oidc-idtoken",
+      "cmd": "node examples/rfc-quote.mjs sources/oidc-core-1_0.txt \"Clients MUST validate the ID Token in the Token Response\" \"The Issuer Identifier for the OpenID Provider\" \"The Client MUST validate that the aud\" \"If the ID Token is received via direct\" \"The Client MUST validate the signature of all other ID Tokens\" \"The current time MUST be before\" \"If a nonce value was sent in the Authentication Request\"",
+      "expect": [
+        "Clients MUST validate the ID Token in the Token Response",
+        "MUST exactly match the value of the iss (issuer) Claim.",
+        "The Client MUST validate that the aud (audience) Claim contains its client_id value",
+        "the TLS server validation MAY be used to validate the issuer in place of checking the token signature.",
+        "The Client MUST validate the signature of all other ID Tokens according to JWS",
+        "The current time MUST be before the time represented by the exp Claim.",
+        "a nonce Claim MUST be present and its value checked"
+      ]
+    },
+    {
+      "name": "rfc-nonce-once",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"The nonce value is one-time use\"",
+      "expect": [
+        "The nonce value is one-time use and is created by the client."
       ]
     }
   ]

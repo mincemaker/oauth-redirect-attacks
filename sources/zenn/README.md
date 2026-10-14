@@ -5,5 +5,5 @@ Hideki Ikeda 氏の [攻撃手法から学ぶ OAuth セキュリティベスト�
 本文は著者の著作物なので Git に入れない。checks.json の照合の前に、次のコマンドで zenn.dev の API から取り直す。
 
 ```sh
-mise exec -- node examples/fetch-zenn.mjs
+mise exec -- node examples/fetch-sources.mjs
 ```
