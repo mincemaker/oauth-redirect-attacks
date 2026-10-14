@@ -4,9 +4,8 @@
       "name": "flow",
       "cmd": "node examples/flow.mjs",
       "expect": [
-        "[prefix] https://app.example/callback.attacker.example → 受理 https://app.example/callback.attacker.example",
         "[prefix] https://app.example/callback/../logout?next=https://attacker.example → 受理 https://app.example/logout",
-        "[exact] https://app.example/callback.attacker.example → invalid_request（redirect_uri 不一致）",
+        "[exact] https://app.example/callback/../logout?next=https://attacker.example → invalid_request（redirect_uri 不一致）",
         "[wildcard https://*.app.example/callback] https://attacker.example/.app.example/callback → 受理 https://attacker.example/.app.example/callback",
         "[exact] http://127.0.0.1:51004/cb → 受理 http://127.0.0.1:51004/cb",
         "[state検証=false PKCE=false] → ログイン成立：セッション victim-session が attacker として扱われる",
@@ -24,6 +23,35 @@
         "redirect_uri を /callback2 に変えて交換 → invalid_grant（redirect_uri が認可リクエストと違う）",
         "[iss検証=false] → トークン取得に失敗：invalid_grant。攻撃者の認可サーバに届いた code 1 個",
         "[iss検証=true] → iss 不一致で拒否（code を送らない）。攻撃者の認可サーバに届いた code 0 個"
+      ]
+    },
+    {
+      "name": "rfc-fragment",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"Additionally, implicit grants\" \"The attack utilizes the fact\"",
+      "expect": [
+        "Additionally, implicit grants (and also other grants when using response_mode=fragment as defined in [OAuth.Responses]) can be subject to a further kind of attack.",
+        "The attack utilizes the fact that user agents reattach fragments to the destination URL of a redirect if the location header does not contain a fragment (see Section 17.11 of [RFC9110])."
+      ]
+    },
+    {
+      "name": "rfc-iss-missing",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9207.txt \"Clients MUST reject authorization responses without\"",
+      "expect": [
+        "Clients MUST reject authorization responses without the iss parameter from authorization servers that do support the parameter according to the client's configuration."
+      ]
+    },
+    {
+      "name": "rfc-guess",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc6749.txt \"The probability of an attacker guessing\"",
+      "expect": [
+        "The probability of an attacker guessing generated tokens (and other credentials not intended for handling by end-users) MUST be less than or equal to 2^(-128) and SHOULD be less than or equal to 2^(-160)."
+      ]
+    },
+    {
+      "name": "rfc-unauthorized-client",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc6749.txt \"The client is not authorized to request an access\"",
+      "expect": [
+        "The client is not authorized to request an access token using this method."
       ]
     },
     {

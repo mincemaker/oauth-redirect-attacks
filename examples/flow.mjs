@@ -4,7 +4,8 @@
 // HTTP は使わない。302 の Location は文字列で返し、ブラウザの役は呼び出し側が担う。
 import { createHash, randomBytes } from 'node:crypto';
 
-const rand = () => randomBytes(16).toString('base64url');
+// 32 バイトで 43 文字。code_verifier は RFC 7636 §4.1 で 43〜128 文字
+const rand = () => randomBytes(32).toString('base64url');
 const s256 = (v) => createHash('sha256').update(v).digest('base64url');
 
 function makeAS({ issuer = 'https://as.example', redirectMatch = 'exact', pkceDowngrade = false, requirePkce = false,
@@ -98,9 +99,8 @@ const authz = (as, params) => { const r = as.authorize(params); return r.error ?
 console.log('## 1. redirect_uri の照合（認可サーバ）');
 for (const mode of ['prefix', 'exact']) {
   const as = makeAS({ redirectMatch: mode });
-  for (const uri of ['https://app.example/callback.attacker.example', 'https://app.example/callback/../logout?next=https://attacker.example']) {
-    show(`[${mode}] ${uri}`, authz(as, { client_id: 'app', redirect_uri: uri, user: 'victim' }));
-  }
+  const uri = 'https://app.example/callback/../logout?next=https://attacker.example';
+  show(`[${mode}] ${uri}`, authz(as, { client_id: 'app', redirect_uri: uri, user: 'victim' }));
 }
 {
   const as = makeAS({ redirectMatch: 'wildcard', registered: ['https://*.app.example/callback'] });
