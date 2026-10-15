@@ -134,7 +134,7 @@ for (const usePkce of [false, true]) {
   show(`[パブリッククライアント PKCE=${usePkce}] 攻撃者が /token を直接呼ぶ`, r.error ?? 'access_token 発行');
 }
 
-console.log('## 4. PKCE ダウングレード：攻撃者が自分の認可リクエストから code_challenge を外し、その code を被害者に踏ませる');
+console.log('## 4. PKCE ダウングレード：code_challenge を外して得た code を被害者に踏ませる');
 // クライアントは state を使わず、CSRF 対策を PKCE だけに頼っている（RFC 9700 §4.8 の前提）
 for (const opt of [{ pkceDowngrade: true }, { pkceDowngrade: false }, { pkceDowngrade: true, requirePkce: true }]) {
   const as = makeAS(opt); const app = makeClient(as, { checkState: false, usePkce: true });
@@ -145,7 +145,7 @@ for (const opt of [{ pkceDowngrade: true }, { pkceDowngrade: false }, { pkceDown
   show(label, r.error ? `認可リクエストで拒否：${r.error}` : app.callback('victim-session', r.location));
 }
 
-console.log('## 5. code の再利用と、トークンリクエストの redirect_uri');
+console.log('## 5. code の再利用とトークンリクエストの redirect_uri');
 {
   const as = makeAS();
   const code = () => new URL(as.authorize({ client_id: 'app', redirect_uri: 'https://app.example/callback', user: 'victim' }).location).searchParams.get('code');

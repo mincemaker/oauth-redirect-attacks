@@ -1,4 +1,4 @@
-# 認可コードフローの診断で、どの値を書き換え、何が通れば脆弱か
+# 認可コードフロー診断：書き換える値と脆弱の判定基準
 
 > OAuth の診断の経験がある人へ。観点表との差分になりやすいのは次の 5 点で、必要な節だけ拾えるようにしてある。持ち帰るチェックリストは [7 節](#checklist)。
 >
@@ -95,7 +95,7 @@ code は 3 でブラウザの URL に載るので、書き換えられ、Referer
 
 4 は裏の通信なので、届いた code が誰のものかは認可サーバが PKCE で確かめる（3 節）。
 
-## 2. redirect_uri は、認可サーバが完全一致で照合する
+## 2. redirect_uri は認可サーバが完全一致で照合する
 
 認可サーバは、認可リクエストの `redirect_uri` を、クライアントが事前に登録した URI と比べる。
 前方一致やワイルドカードで比べると、攻撃者が用意した URL へ code が届く。
@@ -153,7 +153,7 @@ The attack utilizes the fact that user agents reattach fragments to the destinat
 The authorization server MUST allow any port to be specified at the time of the request for loopback IP redirect URIs, to accommodate clients that obtain an available ephemeral port from the operating system at the time of the request.
 ```
 
-## 3. state と PKCE は、防ぐ攻撃が違う
+## 3. state と PKCE は防ぐ攻撃が違う
 
 state はクライアントが生成してセッションに保存し、`/callback` で戻ってきた値と比べる。
 PKCE は、クライアントが生成した秘密の `code_verifier` のハッシュ（`code_challenge`）を認可リクエストに載せ、トークンリクエストで `code_verifier` そのものを送る。認可サーバは、その code を発行したときの `code_challenge` と照合する。
@@ -275,7 +275,7 @@ Authorization servers MUST mitigate PKCE downgrade attacks by ensuring that a to
 
 <!-- output: flow -->
 ```
-## 4. PKCE ダウングレード：攻撃者が自分の認可リクエストから code_challenge を外し、その code を被害者に踏ませる
+## 4. PKCE ダウングレード：code_challenge を外して得た code を被害者に踏ませる
 [ダウングレード対策=false] → ログイン成立：セッション victim-session が attacker として扱われる
 [ダウングレード対策=true] → トークン取得に失敗：invalid_grant（PKCE ダウングレード）
 [PKCE 必須] → 認可リクエストで拒否：invalid_request（code_challenge が無い）
@@ -296,7 +296,7 @@ parameter is present if the "redirect_uri" parameter was included in the initial
 
 <!-- output: flow -->
 ```
-## 5. code の再利用と、トークンリクエストの redirect_uri
+## 5. code の再利用とトークンリクエストの redirect_uri
 1 回目の交換 → access_token 発行
 同じ code で 2 回目 → invalid_grant（code 再利用。発行済みトークンを失効）
 1 回目の access_token → 失効
