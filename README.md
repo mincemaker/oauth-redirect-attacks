@@ -108,7 +108,7 @@ When comparing client redirection URIs against pre-registered URIs, authorizatio
 Clients and authorization servers MUST NOT expose URLs that forward the user's browser to arbitrary URIs obtained from a query parameter (open redirectors) as described in Section 4.11.
 ```
 
-再現スクリプト `examples/flow.mjs` では、認可サーバとクライアントを関数で書き、脆弱な設定と正しい設定に同じリクエストを送って結果を比べた。2〜5 節の結果の表はすべてこれの出力で、実物の挙動はハンズオンで確かめる。
+再現スクリプト `examples/flow.mjs` では、認可サーバとクライアントを関数で書き、脆弱な設定と正しい設定に同じリクエストを送って結果を比べた。2〜5 節の結果の表はすべてこれの出力で、実物の挙動は、やられサーバなどを使って確かめる。
 
 ここでは、登録値 `https://app.example/callback` に対して、前方一致（prefix）と完全一致（exact）の認可サーバに同じ要求を送った。
 ワイルドカード（wildcard）の行は、Zenn の本の 2 章の例に合わせ、登録値を `https://*.app.example/callback` にして、`*` が `/` にも一致する認可サーバに送った。
