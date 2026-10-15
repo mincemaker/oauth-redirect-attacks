@@ -1,4 +1,5 @@
-dist/
+dist/*
+!dist/index.html
 test-results/
 .figure-check/
 .vlmkit/
