@@ -6,6 +6,8 @@
       "expect": [
         "[prefix] https://app.example/callback/../logout?next=https://attacker.example → 受理 https://app.example/logout",
         "[exact] https://app.example/callback/../logout?next=https://attacker.example → invalid_request（redirect_uri 不一致）",
+        "[prefix https://app.example] https://app.example.example.jp/callback → 受理 https://app.example.example.jp/callback",
+        "[contains https://app.example/callback] https://attacker.example/?https://app.example/callback → 受理 https://attacker.example/",
         "[wildcard https://*.app.example/callback] https://attacker.example/.app.example/callback → 受理 https://attacker.example/.app.example/callback",
         "[exact] http://127.0.0.1:51004/cb → 受理 http://127.0.0.1:51004/cb",
         "[state検証=false PKCE=false] → ログイン成立：セッション victim-session が attacker として扱われる",
@@ -236,6 +238,42 @@
       "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"The nonce value is one-time use\"",
       "expect": [
         "The nonce value is one-time use and is created by the client."
+      ]
+    },
+    {
+      "name": "rfc-pkce-binding",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"In any case, the PKCE challenge\"",
+      "expect": [
+        "the PKCE challenge or OpenID Connect nonce MUST be transaction-specific"
+      ]
+    },
+    {
+      "name": "rfc-nonce-confidential",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"With additional precautions, described in Section 4.5.3.2\"",
+      "expect": [
+        "confidential OpenID Connect [OpenID.Core] clients MAY use the nonce parameter"
+      ]
+    },
+    {
+      "name": "oidc-implicit-nonce",
+      "cmd": "node examples/rfc-quote.mjs sources/oidc-core-1_0.txt \"Use of the nonce Claim is REQUIRED\"",
+      "expect": [
+        "Use of the nonce Claim is REQUIRED for this flow."
+      ]
+    },
+    {
+      "name": "rfc-mixup-options",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"use an alternative countermeasure based on an iss value\" \"In the absence of these options\"",
+      "expect": [
+        "such as the iss claim in the ID Token in [OpenID.Core] or in [OpenID.JARM] responses",
+        "clients MAY instead use distinct redirection URIs"
+      ]
+    },
+    {
+      "name": "oidc-aud",
+      "cmd": "node examples/rfc-quote.mjs sources/oidc-core-1_0.txt \"The ID Token MUST be rejected if the ID Token does not list\"",
+      "expect": [
+        "or if it contains additional audiences not trusted by the Client."
       ]
     }
   ]

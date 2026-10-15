@@ -1,4 +1,4 @@
-# 認可コードフロー診断：書き換える値と脆弱の判定基準
+# OAuth の認可コードフローの診断観点
 
 > OAuth の診断の経験がある人へ。観点表との差分になりやすいのは次の 5 点で、必要な節だけ拾えるようにしてある。持ち帰るチェックリストは [7 節](#checklist)。
 >
@@ -8,11 +8,11 @@
 > | PKCE だけで CSRF を防ぐクライアントは、認可サーバが PKCE ダウングレードを止めていないと CSRF が通る | 4 |
 > | code の再利用は、2 回目の拒否だけでなく、1 回目のトークンの失効まで見る | 4 |
 > | Referer での漏洩は、Referrer Policy を既定より緩めたページや要素で起きる。外部の JavaScript は Referer を介さず URL を読む | 5 |
-> | mix-up では、ログイン失敗の画面でも code が漏れうる。画面ではなく通信で判定する | 5 |
+> | mix-up 攻撃では、ログイン失敗の画面でも code が漏れうる。画面ではなく通信で判定する | 5 |
 >
 > どれも [7 節のチェックリスト](#checklist) の 1 行になっている。
 
-> 想定読者：Web アプリケーションの脆弱性診断はできるが、OAuth / OIDC の認可フローと、その診断観点を知らない人。上の表は経験者が必要な節だけ拾うための入口で、初めての人はここから順に読む。HTTP、302 リダイレクト、Cookie のセッション、CSRF、セッション固定、オープンリダイレクト、プロキシでの書き換えと再送は知っている前提にした。
+> 想定読者：Web アプリケーションの脆弱性診断ができ、OAuth / OIDC の認可コードフローと、PKCE や nonce などの対策を知っているが、その診断観点を知らない人。上の表は経験者が必要な節だけ拾うための入口で、初めての人はここから順に読む。HTTP、302 リダイレクト、Cookie のセッション、CSRF、セッション固定、オープンリダイレクト、プロキシでの書き換えと再送は知っている前提にした。
 >
 > 省いたもの：OAuth の歴史とグラントの網羅、JWT の構造、Hybrid Flow の詳細、ネイティブアプリ固有の横取り、PAR、リフレッシュトークン。リソースサーバ側の観点（盗まれたアクセストークンの送信者制約・受信者制約、DPoP、`sub` にクライアント ID が入るなりすまし）は、Hideki Ikeda 氏の [攻撃手法から学ぶ OAuth セキュリティベストプラクティス](https://zenn.dev/hidebike712/books/oauth-attacks-and-bcp)（v1.2.3、以下「Zenn の本」）の 9・12〜14 章にある。
 >
@@ -39,7 +39,7 @@
 | 2 | redirect_uri は認可サーバが完全一致で照合する | `flow.mjs` の出力 | ワイルドカードの突破と、ループバックの誤検知を判定するため |
 | 3 | state と PKCE は防ぐ攻撃が違う | `flow.mjs` の出力 | state があっても認可コードの注入は通るため |
 | 4 | トークンエンドポイントで試すこと | `flow.mjs` の出力 | 認可サーバ側の不備を、クライアントから切り分けるため |
-| 5 | code の漏洩と mix-up | 原文と `flow.mjs` の出力 | 注入の前提になる漏洩と、複数の認可サーバの構成を診断に入れるため |
+| 5 | code の漏洩と mix-up 攻撃 | 原文と `flow.mjs` の出力 | 注入の前提になる漏洩と、複数の認可サーバの構成を診断に入れるため |
 | 6 | Implicit Grant と OIDC | 原文 | 見つけたら指摘する構成と、ID トークンで足す観点を押さえるため |
 
 </details>
@@ -56,10 +56,10 @@
 |---|---|---|---|
 | `/authorize` の `redirect_uri` を、登録値の前方一致・ワイルドカード・パス違いに | 登録した URI ↔ code を届ける先 | 攻撃者の URL や、オープンリダイレクタ経由で code が外へ出る | 認可サーバ（[RFC 9700 §2.1](https://www.rfc-editor.org/rfc/rfc9700#section-2.1)、[§4.1](https://www.rfc-editor.org/rfc/rfc9700#section-4.1)） |
 | `/callback` の `state` を、削除・別セッションの値に | フローを始めたセッション ↔ code を受け取るセッション | 被害者が攻撃者のアカウントでログイン・連携する（CSRF） | クライアント（[RFC 9700 §2.1](https://www.rfc-editor.org/rfc/rfc9700#section-2.1)、[§4.7](https://www.rfc-editor.org/rfc/rfc9700#section-4.7)） |
-| `/callback` の `code` を、別のブラウザで得た code に（state は自分の値） | 認可リクエスト ↔ トークンリクエスト（PKCE） | 攻撃者のセッションが被害者として扱われる（認可コードの注入） | PKCE なら認可サーバ、nonce ならクライアント。どちらも使っていなければクライアントの不備（[RFC 9700 §2.1.1](https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1)、[§4.5](https://www.rfc-editor.org/rfc/rfc9700#section-4.5)） |
+| `/callback` の `code` を、別のブラウザで得た code に（state は自分の値） | 認可リクエスト ↔ トークンリクエスト（PKCE） | 攻撃者のセッションが被害者として扱われる（認可コードの注入） | PKCE なら認可サーバ、nonce（confidential な OIDC クライアントに限る）ならクライアント。どちらも使っていなければクライアントの不備（[RFC 9700 §2.1.1](https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1)、[§4.5](https://www.rfc-editor.org/rfc/rfc9700#section-4.5)） |
 | 自分の `/authorize` から `code_challenge` を外し、その code を被害者に踏ませる | 同上 | PKCE だけで CSRF を防ぐクライアントで、CSRF が通る（PKCE ダウングレード） | 認可サーバ（[RFC 9700 §2.1.1](https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1)、[§4.8](https://www.rfc-editor.org/rfc/rfc9700#section-4.8)） |
 | `/token` で同じ `code` を 2 回交換、`redirect_uri` を変えて交換 | code ↔ client・redirect_uri | 漏れた code が使える | 認可サーバ（[RFC 6749 §4.1.2](https://www.rfc-editor.org/rfc/rfc6749#section-4.1.2)、[§4.1.3](https://www.rfc-editor.org/rfc/rfc6749#section-4.1.3)） |
-| `/callback` の `iss` を、別の認可サーバの値に | 要求を送った認可サーバ ↔ 応答を返した認可サーバ | code が攻撃者の認可サーバへ送られる（mix-up） | クライアント（[RFC 9700 §2.1](https://www.rfc-editor.org/rfc/rfc9700#section-2.1)、[RFC 9207 §2.4](https://www.rfc-editor.org/rfc/rfc9207#section-2.4)） |
+| `/callback` の `iss` を、別の認可サーバの値に | 要求を送った認可サーバ ↔ 応答を返した認可サーバ | mix-up 攻撃を防げない（攻撃が成立すると code が攻撃者の認可サーバへ送られる） | クライアント（[RFC 9700 §2.1](https://www.rfc-editor.org/rfc/rfc9700#section-2.1)、[RFC 9207 §2.4](https://www.rfc-editor.org/rfc/rfc9207#section-2.4)） |
 
 通っても脆弱でない挙動が 1 つある。
 ネイティブアプリのループバック IP（`http://127.0.0.1` や `http://[::1]`）の redirect URI でポートだけが違う要求を、認可サーバが受理するのは正しい（2 節）。
@@ -88,7 +88,7 @@
 
 | 踏ませる URL | 狙い | 攻撃 |
 |---|---|---|
-| 1 の認可リクエスト | 被害者の code を奪う | redirect_uri の緩い照合、mix-up |
+| 1 の認可リクエスト | 被害者の code を奪う | redirect_uri の緩い照合、mix-up 攻撃 |
 | 3 のコールバック | 攻撃者の code を被害者に入れる | CSRF、PKCE ダウングレード |
 
 code は 3 でブラウザの URL に載るので、書き換えられ、Referer や履歴にも残る。
@@ -120,16 +120,32 @@ Clients and authorization servers MUST NOT expose URLs that forward the user's b
 認可サーバーは、ワイルドカード * を「ドメイン名で有効な文字」ではなく、「/ を含む任意の文字列」として解釈する不適切なパターンマッチを実装しているものとします。
 ```
 
+| 認可サーバの照合 | 登録値 | 送った redirect_uri | 判定 | 何が起きたか |
+|---|---|---|---|---|
+| 前方一致 | `https://app.example/callback` | `https://app.example/callback/../logout?next=…` | 脆弱 | 受理し、code が `/logout` に届く |
+| 完全一致 | 同上 | 同上 | 安全 | 拒否 |
+| 前方一致 | `https://app.example`（パスなし） | `https://app.example.example.jp/callback` | 脆弱 | 受理し、code が別のホストに届く |
+| 部分一致（登録値を含むか） | `https://app.example/callback` | `https://attacker.example/?https://app.example/callback` | 脆弱 | 受理し、code が攻撃者のホストに届く |
+| ワイルドカード（`*` が `/` にも一致） | `https://*.app.example/callback` | `https://attacker.example/.app.example/callback` | 脆弱 | 受理し、code が攻撃者のホストに届く |
+| 完全一致 | `http://127.0.0.1/cb` | `http://127.0.0.1:51004/cb` | 安全 | 受理（ループバックのポート違いは許すのが正しい） |
+
 <!-- output: flow -->
 ```
-## 1. redirect_uri の照合（認可サーバ）
 [prefix] https://app.example/callback/../logout?next=https://attacker.example → 受理 https://app.example/logout
+
 [exact] https://app.example/callback/../logout?next=https://attacker.example → invalid_request（redirect_uri 不一致）
+
+[prefix https://app.example] https://app.example.example.jp/callback → 受理 https://app.example.example.jp/callback
+
+[contains https://app.example/callback] https://attacker.example/?https://app.example/callback → 受理 https://attacker.example/
+
 [wildcard https://*.app.example/callback] https://attacker.example/.app.example/callback → 受理 https://attacker.example/.app.example/callback
+
 [exact] http://127.0.0.1:51004/cb → 受理 http://127.0.0.1:51004/cb
 ```
 
 前方一致では、`..` でクライアント内の別のページ（`/logout`）へ出る URI を受理した。登録値にパスがあれば、前方一致でもホストは変えられないが、登録外のページに code が届く。
+登録値にパスが無いと、前方一致では `app.example.example.jp` のようにホスト名の後ろを伸ばした別のホストも通る。登録値を含むかで比べる認可サーバでは、クエリに登録値を入れるだけで任意の URL が通る。
 
 そのページがオープンリダイレクタでも、302 の転送で引き継がれるのはフラグメントで、クエリの code は引き継がれない。認可サーバが `response_mode=fragment` を受け付けるなら、攻撃者はそれを付けて code をフラグメントで返させ、攻撃者のサイトまで運ばせられる。
 
@@ -142,7 +158,7 @@ The attack utilizes the fact that user agents reattach fragments to the destinat
 ```
 
 ワイルドカードでは、ホストが `attacker.example` の URI を受理した。登録値にワイルドカードがある認可サーバでは、`*` の位置に `/` を含む値を入れて試す。
-試すときは、サブドメイン・パス・クエリ・`..`・大文字小文字を変えた `redirect_uri` を送り、エラー画面になるか（認可サーバがクライアントへ戻さないか）を見る。
+試すときは、どの登録値とも一致しないように、サブドメイン・パス・クエリ・`..`・大文字小文字を変えた `redirect_uri` を送り、エラー画面になるか（認可サーバがクライアントへ戻さないか）を見る。
 
 最後の行は、登録値 `http://127.0.0.1/cb` にポートを付けた要求で、受理するのが正しい。
 
@@ -160,12 +176,20 @@ PKCE は、クライアントが生成した秘密の `code_verifier` のハッ�
 どちらもクライアントのセッションに保存した値で、紐付けるものが違う。
 
 1 つ目の攻撃は CSRF。攻撃者は自分のアカウントでフローを進め、`/callback` を踏まずに止めて、その URL を被害者に踏ませる。
+被害者側は、自分でもログインや連携を始めて認可サーバから戻る前で止めた状態と、何も始めていない状態の両方で試す。PKCE だけで防ぐクライアントへの攻撃は、被害者のセッションに `code_verifier` が残っている前者で成り立つ。
+
+| state の照合 | PKCE | 判定 | 何が起きたか |
+|---|---|---|---|
+| なし | なし | 脆弱 | 被害者のセッションが攻撃者としてログインする |
+| なし | あり | 安全 | トークンエンドポイントで拒否（code_verifier 不一致） |
+| あり | なし | 安全 | `/callback` で拒否（state 不一致） |
 
 <!-- output: flow -->
 ```
-## 2. state：攻撃者の code を被害者のセッションに送る（CSRF）
 [state検証=false PKCE=false] → ログイン成立：セッション victim-session が attacker として扱われる
+
 [state検証=false PKCE=true] → トークン取得に失敗：invalid_grant（code_verifier 不一致）
+
 [state検証=true PKCE=false] → state 不一致で拒否
 ```
 
@@ -207,18 +231,42 @@ For confidential clients, the use of PKCE [RFC7636] is RECOMMENDED, as it provid
 再現スクリプトで、state を検証するクライアントに、被害者の code と攻撃者自身の state を送った。
 後の 2 行は、client secret を持たないパブリッククライアント（SPA やネイティブアプリ）の code を、攻撃者がクライアントを通さず `/token` へ直接送った結果。
 
+| クライアント | PKCE | 攻撃 | 判定 | 何が起きたか |
+|---|---|---|---|---|
+| state を照合する | なし | 被害者の code を攻撃者のセッションに注入 | 脆弱 | 攻撃者のセッションが被害者としてログインする |
+| state を照合する | あり | 同上 | 安全 | トークンエンドポイントで拒否 |
+| パブリッククライアント | なし | 攻撃者が `/token` を直接呼ぶ | 脆弱 | アクセストークンが発行される |
+| パブリッククライアント | あり | 同上 | 安全 | 拒否（code_verifier 不一致） |
+
 <!-- output: flow -->
 ```
-## 3. 認可コードの注入：漏れた被害者の code を攻撃者のセッションで使う
 [state検証=true PKCE=false] → ログイン成立：セッション attacker-session が victim として扱われる
+
 [state検証=true PKCE=true] → トークン取得に失敗：invalid_grant（code_verifier 不一致）
+
 [パブリッククライアント PKCE=false] 攻撃者が /token を直接呼ぶ → access_token 発行
+
 [パブリッククライアント PKCE=true] 攻撃者が /token を直接呼ぶ → invalid_grant（code_verifier 不一致）
 ```
 
 state の照合は通り、PKCE が無ければ攻撃者のセッションが被害者として扱われた。
 引用の 3 文目のとおり、トークンリクエストを送るのは正規のクライアントなので、client secret などのクライアント認証も注入を止めない。
 パブリッククライアントでは、漏れた code はそのままアクセストークンになる。PKCE が MUST になっているのはこのため。
+
+PKCE を使うクライアントで注入が通っても、すぐに認可サーバの不備とは決めない。クライアントが `code_verifier` をフロー間で使い回していれば、認可サーバが正しく照合しても通る。先に `code_verifier` がフローごとに変わるかを確かめる。
+nonce で注入を防いでよいのは、confidential な OIDC クライアントに限られる。
+
+出典：[RFC 9700 §2.1.1](https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1)
+
+<!-- output: rfc-pkce-binding -->
+```
+In any case, the PKCE challenge or OpenID Connect nonce MUST be transaction-specific and securely bound to the client and the user agent in which the transaction was started.
+```
+
+<!-- output: rfc-nonce-confidential -->
+```
+With additional precautions, described in Section 4.5.3.2, confidential OpenID Connect [OpenID.Core] clients MAY use the nonce parameter and the respective Claim in the ID Token instead.
+```
 
 出典：[RFC 9700 §4.5.3.2](https://www.rfc-editor.org/rfc/rfc9700#section-4.5.3.2)
 
@@ -228,7 +276,7 @@ It is important to note that nonce does not protect authorization codes of publi
 Instead, an attacker can directly call the token endpoint with the stolen authorization code.
 ```
 
-診断では、自分の 2 つのブラウザ（A と B）で試す。A で得た code を、B で始めたフローの認可レスポンスに差し替えて B の `/callback` へ送り、B が A のユーザーとしてログインすれば脆弱。
+診断では、自分の 2 つのブラウザ（A と B）で試す。A の認可レスポンスをプロキシで止め、クライアントに届く前に code を取り出す（届くと使用済みになる）。その code を B で始めたフローの認可レスポンスに差し替えて B の `/callback` へ送り、B が A のユーザーとしてログインすれば脆弱。
 
 OIDC の nonce で注入を防ぐクライアントは、トークンレスポンスの ID トークンの nonce を照合しているかを見る。認可レスポンスにも ID トークンが入る構成（`response_type=code id_token`）で、そちらだけを照合していると、差し替えた code の ID トークンを見ていないことになる。
 照合が済むまで、アクセストークンを使う処理（連携やプロフィールの取得）を始めていないかも見る。照合で拒否しても、その前に連携が済んでいれば注入は通っている（RFC 9700 §4.5.3.2 の 2 つ目の MUST）。
@@ -254,7 +302,7 @@ Currently, S256 is the only such method.
 この節の不備は、認可サーバの不備になる。
 診断対象がクライアントだけで、認可サーバが外部の IdP なら、結果は IdP の不備として分けて報告する。
 
-どの確認リクエストも、未使用の新しい code で正常な交換が通ることを確かめてから、値を 1 つだけ変える。使用済みや期限切れの code、クライアント認証の失敗で拒否されても、目的の検証が効いた証拠にはならない。
+正常な交換が通ることを確かめた code は、それで使用済みになる。確認リクエストには毎回別の未使用の code を用意し、正常な要求から値を 1 つだけ変える。使用済みや期限切れの code、クライアント認証の失敗で拒否されても、目的の検証が効いた証拠にはならない。
 
 1 つ目は PKCE ダウングレード。CSRF の一種で、PKCE を必須にしていない認可サーバと、CSRF 対策を PKCE だけに頼るクライアントの組み合わせで成り立つ。
 
@@ -273,11 +321,18 @@ Authorization servers MUST mitigate PKCE downgrade attacks by ensuring that a to
 認可サーバは PKCE に紐付かない code を発行する。攻撃者はその code 付きの `/callback` の URL を被害者に踏ませる。
 クライアントは被害者のセッションの `code_verifier` を付けてトークンリクエストを送り、認可サーバは code に `code_challenge` が無いので照合を省く。
 
+| 認可サーバ | 判定 | 何が起きたか |
+|---|---|---|
+| PKCE は任意で、ダウングレード対策なし | 脆弱 | 被害者のセッションが攻撃者としてログインする |
+| PKCE は任意で、ダウングレード対策あり | 安全 | トークンエンドポイントで拒否 |
+| PKCE 必須 | 安全 | 認可リクエストの時点で拒否 |
+
 <!-- output: flow -->
 ```
-## 4. PKCE ダウングレード：code_challenge を外して得た code を被害者に踏ませる
 [ダウングレード対策=false] → ログイン成立：セッション victim-session が attacker として扱われる
+
 [ダウングレード対策=true] → トークン取得に失敗：invalid_grant（PKCE ダウングレード）
+
 [PKCE 必須] → 認可リクエストで拒否：invalid_request（code_challenge が無い）
 ```
 
@@ -294,12 +349,21 @@ If an authorization code is used more than once, the authorization server MUST d
 parameter is present if the "redirect_uri" parameter was included in the initial authorization request as described in Section 4.1.1, and if included ensure that their values are identical.
 ```
 
+| 確認リクエスト | 判定 | 何が起きたか |
+|---|---|---|
+| 1 回目の交換 | 正常遷移 | アクセストークンが発行される |
+| 同じ code で 2 回目 | 安全 | 拒否 |
+| 1 回目のアクセストークン | 安全 | 2 回目の交換で失効している |
+| `redirect_uri` を `/callback2` に変えて交換 | 安全 | 拒否（認可リクエストと違う） |
+
 <!-- output: flow -->
 ```
-## 5. code の再利用とトークンリクエストの redirect_uri
 1 回目の交換 → access_token 発行
+
 同じ code で 2 回目 → invalid_grant（code 再利用。発行済みトークンを失効）
+
 1 回目の access_token → 失効
+
 redirect_uri を /callback2 に変えて交換 → invalid_grant（redirect_uri が認可リクエストと違う）
 ```
 
@@ -316,7 +380,7 @@ code が漏れて攻撃者が先に交換した場合、正規のクライアン
 The probability of an attacker guessing generated tokens (and other credentials not intended for handling by end-users) MUST be less than or equal to 2^(-128) and SHOULD be less than or equal to 2^(-160).
 ```
 
-## 5. code の漏洩と mix-up
+## 5. code の漏洩と mix-up 攻撃
 
 3 節の注入は、被害者の code が攻撃者の手に渡ることが前提。
 code はクエリで `/callback` に届くので、そのページから外部のサイトへリクエストが出ると、Referer で外部へ送られうる。
@@ -365,7 +429,7 @@ Clients MUST NOT pass access tokens in a URI query parameter in the way describe
 
 form_post のクライアントでは、この制約のために state の照合が外されていないかを、3 節の state を改ざんした POST で確かめる。
 
-mix-up は、クライアントが複数の認可サーバ（「Google でログイン」と「GitHub でログイン」など）を使うときの攻撃。
+認可サーバの mix-up 攻撃は、クライアントが複数の認可サーバ（「Google でログイン」と「GitHub でログイン」など）を使うときの攻撃。
 被害者が攻撃者の認可サーバを選んで始めたフローを、攻撃者が正規の認可サーバへ転送すると、正規の認可サーバの code が「攻撃者の認可サーバの応答」としてクライアントに届く。
 クライアントがそのまま攻撃者の認可サーバへトークンリクエストを送ると、code が攻撃者の手に渡る。
 
@@ -383,17 +447,34 @@ When an OAuth client can interact with more than one authorization server, a def
 If the value does not match the expected issuer identifier, clients MUST reject the authorization response and MUST NOT proceed with the authorization grant.
 ```
 
+| クライアントの iss の照合 | 判定 | 何が起きたか |
+|---|---|---|
+| なし | 脆弱 | ログインは失敗するが、code が攻撃者の認可サーバに 1 個届く |
+| あり | 安全 | iss 不一致で拒否し、code は届かない |
+
 <!-- output: flow -->
 ```
-## 6. mix-up：別の認可サーバの応答として届いた code
 [iss検証=false] → トークン取得に失敗：invalid_grant。攻撃者の認可サーバに届いた code 1 個
+
 [iss検証=true] → iss 不一致で拒否（code を送らない）。攻撃者の認可サーバに届いた code 0 個
 ```
 
 iss を見ないクライアントでは、ログインは失敗したが、code は攻撃者の認可サーバに届いた。利用者から見るとただのログイン失敗なので、画面の結果だけで判定しない。
 iss はトークンリクエストの前に確かめる必要がある。トークンレスポンスの ID トークンの `iss` で確かめても、code はもう送った後になる。
 
-`iss` を書き換える確認リクエストに加えて、`iss` を削除する確認リクエストも送る。認可サーバがメタデータで `iss` への対応を示しているなら、`iss` の無い応答もクライアントは拒否する。
+iss を書き換える確認リクエストは、対策が効いているかを見るもので、攻撃の再現ではない。通常のフローで iss だけを書き換えても、クライアントはフローを始めた認可サーバへ code を送るので、code は漏れない。
+
+まず、クライアントがどの対策を使っているかを確かめる。RFC 9700 が挙げるのは、iss パラメータ、ID トークンや JARM の iss、それらが使えないときの認可サーバごとの redirect URI。
+
+出典：[RFC 9700 §2.1](https://www.rfc-editor.org/rfc/rfc9700#section-2.1)
+
+<!-- output: rfc-mixup-options -->
+```
+use an alternative countermeasure based on an iss value in the authorization response (such as the iss claim in the ID Token in [OpenID.Core] or in [OpenID.JARM] responses), processing that value as described in [RFC9207].
+In the absence of these options, clients MAY instead use distinct redirection URIs to identify authorization endpoints and token endpoints, as described in Section 4.4.2.
+```
+
+iss パラメータで防ぐクライアントには、`iss` を書き換える確認リクエストに加えて、`iss` を削除する確認リクエストも送る。認可サーバがメタデータで `iss` への対応を示しているなら、`iss` の無い応答もクライアントは拒否する。
 
 出典：[RFC 9207 §2.4](https://www.rfc-editor.org/rfc/rfc9207#section-2.4)
 
@@ -418,7 +499,7 @@ redirect URI を分けているだけのクライアントは、iss の照合を
 認可リクエストに `response_type=token`（Implicit Grant）を見つけたら、それ自体を指摘する。
 アクセストークンが URL のフラグメントで直接届き、3 節の PKCE による紐付けが効かないため。
 
-クライアントが `response_type=code` しか使っていなくても、認可リクエストを `token` に書き換えて送り、認可サーバがアクセストークンを返さないかも見る。返したら、認可サーバの不備として報告する。そのクライアントに Implicit Grant を許していなければ、認可サーバは `unauthorized_client` で拒否する。
+クライアントが `response_type=code` しか使っていなくても、認可リクエストを `token` に書き換えて送り、認可サーバがアクセストークンを返さないかも見る。返したら、そのクライアントの登録で Implicit Grant を許しているかを確かめる。許していないのに返したら認可サーバの不備、許しているなら使わない Implicit Grant を許した登録設定を指摘する。そのクライアントに Implicit Grant を許していなければ、認可サーバは `unauthorized_client` で拒否する。
 
 出典：[RFC 6749 §4.2.2.1](https://www.rfc-editor.org/rfc/rfc6749#section-4.2.2.1)
 
@@ -447,6 +528,14 @@ In OpenID Connect, the attack can be mitigated, as the authorization response ad
 ```
 
 OIDC の `response_type=id_token token` では、クライアントが ID トークンの `at_hash` とアクセストークンを照合しているかを、アクセストークンだけを差し替えて試す。
+Implicit Flow では nonce の送信と照合が必須になる。
+
+出典：[OpenID Connect Core 1.0 §3.2.2.10](https://openid.net/specs/openid-connect-core-1_0.html#ImplicitIDToken)
+
+<!-- output: oidc-implicit-nonce -->
+```
+Use of the nonce Claim is REQUIRED for this flow.
+```
 
 出典：[OpenID Connect Core 1.0 §3.2.2.9](https://openid.net/specs/openid-connect-core-1_0.html#ImplicitTokenValidation)
 
@@ -475,7 +564,16 @@ If a nonce value was sent in the Authentication Request, a nonce Claim MUST be p
 
 4 文目のとおり、トークンエンドポイントから直接受け取った ID トークンでは、署名の検証を TLS のサーバー検証で代えてよい（MAY）。認可コードフローのクライアントが署名を検証していなくても、それだけでは不備にしない。5 文目のとおり、それ以外の ID トークン（認可レスポンスなど、ブラウザを経由して届いたもの）は署名の検証が必須になる。
 
-nonce は 1 回限りの値なので、一度照合に使った nonce の ID トークンを同じセッションに送り直して、受け入れないかも見る。
+`aud` は、自分の client_id を含むだけでなく、信頼していない audience を含まないことも確かめる。
+
+出典：[OpenID Connect Core 1.0 §3.1.3.7](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation)
+
+<!-- output: oidc-aud -->
+```
+The ID Token MUST be rejected if the ID Token does not list the Client as a valid audience, or if it contains additional audiences not trusted by the Client.
+```
+
+nonce は 1 回限りの値なので、照合に使い終えた nonce の ID トークンが再び届いたときに受け入れないかも見る。認可コードフローでは ID トークンが裏の通信で届くので、テスト用の IdP で、新しい code の交換に以前の ID トークンを返させて試す。
 
 出典：[RFC 9700 §4.5.3.2](https://www.rfc-editor.org/rfc/rfc9700#section-4.5.3.2)
 
@@ -490,7 +588,7 @@ The nonce value is one-time use and is created by the client.
 
 認可サーバに送るもの（認可サーバの不備）は次のとおり。
 
-- [ ] `redirect_uri` をサブドメイン・パス・クエリ・`..` 違いにした認可リクエストが、エラー画面で止まるか
+- [ ] どの登録値とも一致しないよう `redirect_uri` をサブドメイン・パス・クエリ・`..` 違い、ホスト名の後ろを伸ばしたもの、登録値をクエリに含めたものにした認可リクエストが、エラー画面で止まるか
 - [ ] 登録値にワイルドカードがあれば、`*` の位置に `/` を含む値（`https://attacker.example/.app.example/callback`）を入れても止まるか
 - [ ] ループバック IP の redirect URI でポートだけが違う要求は、受理されるのが正しい（報告しない）
 - [ ] `code_verifier` を省略・改ざんしたトークンリクエストが拒否されるか
@@ -499,24 +597,24 @@ The nonce value is one-time use and is created by the client.
 - [ ] 別の `client_id`、認可リクエストと違う `redirect_uri`、`redirect_uri` を省いた要求での交換が拒否されるか
 - [ ] client secret などを持つクライアントの code を、クライアント認証を省いて、または誤った認証情報で交換できないか
 - [ ] code・アクセストークンが推測できない値か。推測できそうなら、`/token` への code の総当たりが止まるか
-- [ ] `response_type=code` のクライアントの認可リクエストを `token` に書き換えても、アクセストークンを返さないか
+- [ ] `response_type=code` のクライアントの認可リクエストを `token` に書き換えても、アクセストークンを返さないか（返したら、登録で許しているかを確かめる）
 - [ ] 同意画面の Referrer Policy が既定より緩くないか、外部リンク・外部リソースが無いか
 
 クライアントに送るもの（クライアントの不備）は次のとおり。
 
-- [ ] 攻撃者のアカウントで得た code を被害者のブラウザの `/callback` に送り、アカウントの紐付けが起きないか
+- [ ] 攻撃者のアカウントで得た code を被害者のブラウザの `/callback` に送り、アカウントの紐付けが起きないか（被害者側がフローを始めて完了前の状態と、始めていない状態の両方で）
 - [ ] state で CSRF を防ぐクライアントなら、`/callback` の `state` を削除・改ざん・別セッションの値にしたとき、ログインや連携が完了しないか（PKCE や nonce で防ぐクライアントでは、通っても不備ではない。前の行で判定する）
 - [ ] ログイン・連携の開始エンドポイントでセッションを固定できないか
 - [ ] state・nonce・`code_verifier` がフローごとに新しく、推測できない値か（固定値や使い回しでないか）
-- [ ] ブラウザ A で得た code を、ブラウザ B のフローの認可レスポンスに差し替えて送り、B が A のユーザーにならないか（PKCE を使うクライアントでも試す）
+- [ ] ブラウザ A でクライアントに届く前に取り出した code を、ブラウザ B のフローの認可レスポンスに差し替えて送り、B が A のユーザーにならないか（PKCE を使うクライアントでも試す）
 - [ ] パブリッククライアントなら、認可リクエストに `code_challenge` を必ず付けているか。PKCE を使うなら `code_challenge_method=S256` か
 - [ ] nonce で注入を防ぐなら、トークンレスポンスの ID トークンの nonce を照合し、照合が済むまでアクセストークンを使っていないか
-- [ ] OIDC なら、ID トークンの `iss`・`aud`・`exp` と、送った場合の `nonce` を検証しているか（テスト用の IdP か実装で確かめる）。署名の検証は、ブラウザを経由して届いた ID トークンでだけ必須
+- [ ] OIDC なら、ID トークンの `iss`・`aud`（自分の client_id を含み、信頼していない audience を含まないか）・`exp` と、認可コードフローで送った場合の `nonce` を検証しているか（テスト用の IdP か実装で確かめる）。署名の検証は、ブラウザを経由して届いた ID トークンでだけ必須
 - [ ] UserInfo を使うなら、その `sub` が ID トークンの `sub` と一致するかを照合しているか
 - [ ] `/callback` とその転送先のページの Referrer Policy（ヘッダー・meta・要素の属性）が既定より緩くないか、外部リンク・外部リソース・外部スクリプトが無いか、ログに code を残さないか
 - [ ] アクセストークンを URL のクエリに載せていないか
-- [ ] 複数の認可サーバを使うなら、認可レスポンスの `iss` を別の値にしたとき、トークンリクエストを送らずに止まるか。認可サーバが `iss` に対応している（メタデータの `authorization_response_iss_parameter_supported`）なら、`iss` を削除しても止まるか
-- [ ] `response_type` に `token` を含む要求（`token`、`id_token token`）を使っていないか。使っているなら、アクセストークンを差し替えて別のユーザーとしてログインできないか。OIDC なら `at_hash` を照合しているか
+- [ ] 複数の認可サーバを使うなら、mix-up 攻撃の対策（iss パラメータ・ID トークンや JARM の iss・認可サーバごとの redirect URI）のどれを使っているか。iss パラメータなら、認可レスポンスの `iss` を別の値にしたとき、トークンリクエストを送らずに止まるか。認可サーバが `iss` に対応している（メタデータの `authorization_response_iss_parameter_supported`）なら、`iss` を削除しても止まるか
+- [ ] `response_type` に `token` を含む要求（`token`、`id_token token`）を使っていないか。使っているなら、アクセストークンを差し替えて別のユーザーとしてログインできないか。OIDC なら nonce を必ず送り、ID トークンの nonce と `at_hash` を照合しているか
 
 ## 8. 理解度チェック
 
@@ -532,7 +630,7 @@ The nonce value is one-time use and is created by the client.
 
 <details><summary>答え</summary>
 
-報告しない。RFC 8252 §7.3 は、ループバック IP の redirect URI ではポートの違いを許すことを認可サーバに求めている（MUST）。2 節の最後の出力。パスやホストが違う要求が受理されたら、それは報告する。
+報告しない。RFC 8252 §7.3 は、ループバック IP の redirect URI ではポートの違いを許すことを認可サーバに求めている（MUST）。2 節の最後の出力。パスやホストが違い、どの登録値とも一致しない要求が受理されたら、それは報告する。
 
 </details>
 
@@ -548,7 +646,7 @@ The nonce value is one-time use and is created by the client.
 
 <details><summary>答え</summary>
 
-画面だけでは判定しない。ログインが失敗しても、クライアントが code を別の認可サーバのトークンエンドポイントへ送っていれば、code は漏れている。5 節の出力で、iss を見ないクライアントもログインは失敗したが、攻撃者の認可サーバに code が 1 個届いた。クライアントの外向きの通信か実装で、トークンリクエストを送る前に止まったかを確かめる。
+画面だけでは判定しない。ログインが失敗しても、クライアントが code を別の認可サーバのトークンエンドポイントへ送っていれば、code は漏れている。ログイン失敗には、トークンリクエストの前に止まった場合と、code を送った後に失敗した場合がある。5 節の攻撃の再現でも、iss を見ないクライアントはログインに失敗したが、攻撃者の認可サーバに code が 1 個届いた。クライアントの外向きの通信か実装で、トークンリクエストを送る前に止まったかを確かめる。
 
 </details>
 
@@ -560,7 +658,7 @@ The nonce value is one-time use and is created by the client.
 
 </details>
 
-## 付録：再現
+## 付録 再現手順
 
 ```sh
 apm install                # yomiyasu を .claude/skills/ に入れる（日本語の点検に使う）

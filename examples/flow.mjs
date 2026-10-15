@@ -15,13 +15,11 @@ function makeAS({ issuer = 'https://as.example', redirectMatch = 'exact', pkceDo
   const tokens = new Map();
   const matches = (uri, reg) => {
     if (redirectMatch === 'prefix') return uri.startsWith(reg);
+    if (redirectMatch === 'contains') return uri.includes(reg);
     // 「*」を「/ も含む任意の文字列」として扱う、誤ったワイルドカード照合
     if (redirectMatch === 'wildcard') return new RegExp(`^${reg.split('*').map((s) => s.replace(/[.?+^$()[\]{}|\\/]/g, '\\$&')).join('.*')}$`).test(uri);
-    if (uri === reg) return true;
     // RFC 8252 §7.3：ループバック IP の redirect URI だけ、ポートの違いを許す
-    const a = new URL(uri), b = new URL(reg);
-    return a.hostname === '127.0.0.1' && b.hostname === '127.0.0.1' && a.protocol === 'http:'
-      && a.pathname === b.pathname && a.search === b.search;
+    return uri.replace(/^http:\/\/127\.0\.0\.1:\d+\//, 'http://127.0.0.1/') === reg;
   };
   return {
     issuer,
@@ -93,14 +91,20 @@ function makeClient(servers, { checkState = true, usePkce = true, checkIss = tru
   };
 }
 
-const show = (title, result) => console.log(`${title} → ${result}`);
+const show = (title, result) => console.log(`${title} → ${result}\n`);
 const authz = (as, params) => { const r = as.authorize(params); return r.error ?? `受理 ${r.location.split('?')[0]}`; };
 
-console.log('## 1. redirect_uri の照合（認可サーバ）');
+console.log('## redirect_uri の照合');
 for (const mode of ['prefix', 'exact']) {
   const as = makeAS({ redirectMatch: mode });
   const uri = 'https://app.example/callback/../logout?next=https://attacker.example';
   show(`[${mode}] ${uri}`, authz(as, { client_id: 'app', redirect_uri: uri, user: 'victim' }));
+}
+for (const [mode, reg, uri] of [
+  ['prefix', 'https://app.example', 'https://app.example.example.jp/callback'],
+  ['contains', 'https://app.example/callback', 'https://attacker.example/?https://app.example/callback'],
+]) {
+  show(`[${mode} ${reg}] ${uri}`, authz(makeAS({ redirectMatch: mode, registered: [reg] }), { client_id: 'app', redirect_uri: uri, user: 'victim' }));
 }
 {
   const as = makeAS({ redirectMatch: 'wildcard', registered: ['https://*.app.example/callback'] });
@@ -109,7 +113,7 @@ for (const mode of ['prefix', 'exact']) {
 }
 show('[exact] http://127.0.0.1:51004/cb', authz(makeAS(), { client_id: 'app', redirect_uri: 'http://127.0.0.1:51004/cb', user: 'victim' }));
 
-console.log('## 2. state：攻撃者の code を被害者のセッションに送る（CSRF）');
+console.log('## CSRF');
 for (const opt of [{ checkState: false, usePkce: false }, { checkState: false, usePkce: true }, { checkState: true, usePkce: false }]) {
   const as = makeAS(); const app = makeClient(as, opt);
   app.start('victim-session'); // 被害者も自分のフローを始めている
@@ -118,7 +122,7 @@ for (const opt of [{ checkState: false, usePkce: false }, { checkState: false, u
   show(`[state検証=${opt.checkState} PKCE=${opt.usePkce}]`, app.callback('victim-session', loc));
 }
 
-console.log('## 3. 認可コードの注入：漏れた被害者の code を攻撃者のセッションで使う');
+console.log('## 認可コードの注入');
 for (const opt of [{ checkState: true, usePkce: false }, { checkState: true, usePkce: true }]) {
   const as = makeAS(); const app = makeClient(as, opt);
   const victimLoc = as.authorize({ ...app.start('victim-session'), user: 'victim' }).location; // Referer などで漏れた
@@ -134,7 +138,7 @@ for (const usePkce of [false, true]) {
   show(`[パブリッククライアント PKCE=${usePkce}] 攻撃者が /token を直接呼ぶ`, r.error ?? 'access_token 発行');
 }
 
-console.log('## 4. PKCE ダウングレード：code_challenge を外して得た code を被害者に踏ませる');
+console.log('## PKCE ダウングレード');
 // クライアントは state を使わず、CSRF 対策を PKCE だけに頼っている（RFC 9700 §4.8 の前提）
 for (const opt of [{ pkceDowngrade: true }, { pkceDowngrade: false }, { pkceDowngrade: true, requirePkce: true }]) {
   const as = makeAS(opt); const app = makeClient(as, { checkState: false, usePkce: true });
@@ -145,7 +149,7 @@ for (const opt of [{ pkceDowngrade: true }, { pkceDowngrade: false }, { pkceDown
   show(label, r.error ? `認可リクエストで拒否：${r.error}` : app.callback('victim-session', r.location));
 }
 
-console.log('## 5. code の再利用とトークンリクエストの redirect_uri');
+console.log('## code の再利用とトークンリクエストの redirect_uri');
 {
   const as = makeAS();
   const code = () => new URL(as.authorize({ client_id: 'app', redirect_uri: 'https://app.example/callback', user: 'victim' }).location).searchParams.get('code');
@@ -157,7 +161,7 @@ console.log('## 5. code の再利用とトークンリクエストの redirect_u
   show('redirect_uri を /callback2 に変えて交換', as.token({ client_id: 'app', code: code(), redirect_uri: 'https://app.example/callback2' }).error);
 }
 
-console.log('## 6. mix-up：別の認可サーバの応答として届いた code');
+console.log('## mix-up 攻撃');
 // 被害者は攻撃者の認可サーバを選んでログインを始め、攻撃者はその要求を正規の認可サーバへ転送する。
 // 正規の認可サーバの code が、クライアントには「攻撃者の認可サーバの応答」として届く
 for (const checkIss of [false, true]) {
