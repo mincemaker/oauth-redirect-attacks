@@ -1,6 +1,6 @@
 dist/
 test-results/
-figures/.figure-check/
+.figure-check/
 .vlmkit/
 .first-reader/
 
