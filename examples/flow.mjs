@@ -125,7 +125,7 @@ for (const opt of [{ checkState: false, usePkce: false }, { checkState: false, u
 console.log('## 認可コードの注入');
 for (const opt of [{ checkState: true, usePkce: false }, { checkState: true, usePkce: true }]) {
   const as = makeAS(); const app = makeClient(as, opt);
-  const victimLoc = as.authorize({ ...app.start('victim-session'), user: 'victim' }).location; // Referer などで漏れた
+  const victimLoc = as.authorize({ ...app.start('victim-session'), user: 'victim' }).location; // Referer などで漏えいした
   const attackerState = app.start('attacker-session').state; // 攻撃者は自分のセッションの state を持っている
   const injected = victimLoc.replace(/state=[^&]+/, `state=${attackerState}`);
   show(`[state検証=${opt.checkState} PKCE=${opt.usePkce}]`, app.callback('attacker-session', injected));

@@ -56,11 +56,11 @@ nav.book { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 
 <td>4</td>
 </tr>
 <tr>
-<td>Referer での漏洩は、Referrer Policy を既定より緩めたページや要素で起きる。外部の JavaScript は Referer を介さず URL を読む</td>
+<td>Referer での漏えいは、Referrer Policy を既定より緩めたページや要素で起きる。外部の JavaScript は Referer を介さず URL を読む</td>
 <td>5</td>
 </tr>
 <tr>
-<td>mix-up 攻撃では、ログイン失敗の画面でも code が漏れうる。画面ではなく通信で判定する</td>
+<td>mix-up 攻撃では、ログイン失敗の画面でも code が漏えいしうる。画面ではなく通信で判定する</td>
 <td>5</td>
 </tr>
 </tbody></table>
@@ -72,7 +72,7 @@ nav.book { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 
 <p>所要時間：20 分。</p>
 <p>検証方法：攻撃と対策の結果は、認可サーバとクライアントを関数で書いた再現スクリプト <code>examples/flow.mjs</code> を実行した出力を貼った。RFC・OpenID Connect Core 1.0 の要件と Zenn の本の記述は、<code>sources/</code> に保存した原文から 1 文ずつ取り出して貼り、<code>checks.json</code> で照合した。図と診断観点の並びは、archify で作った OAuth・OIDC の攻撃点の図（1 節）と、Zenn の本をもとにした。</p>
 </blockquote>
-<p>この資料は、認可コードフローの診断が「どの値が、何と何を紐付けているか」を知り、その値を外す・差し替えるリクエストを送って、通るかどうかを見る作業だと伝える。
+<p>認可コードフローの診断では、どの値が何と何を紐付けているかを押さえ、その値を外したり差し替えたりしたリクエストを送って、通るかどうかを見る。
 見る値は redirect_uri・state・PKCE（code_verifier）・iss の 4 つで、照合する側が値ごとに決まっている。
 照合する側を取り違えると、試すリクエストの送り先を間違え、通った結果を誰の不備として報告するかも間違える。</p>
 <p>読み終えたら、次の 3 つを判定できるようにする。</p>
@@ -122,9 +122,9 @@ nav.book { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 
 </tr>
 <tr>
 <td>5</td>
-<td>code の漏洩と mix-up 攻撃</td>
+<td>code の漏えいと mix-up 攻撃</td>
 <td>原文と <code>flow.mjs</code> の出力</td>
-<td>注入の前提になる漏洩と、複数の認可サーバの構成を診断に入れるため</td>
+<td>注入の前提になる漏えいと、複数の認可サーバの構成を診断に入れるため</td>
 </tr>
 <tr>
 <td>6</td>
@@ -151,11 +151,11 @@ nav.book { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 
 <tbody><tr>
 <td><code>/authorize</code> の <code>redirect_uri</code> を、登録値の前方一致・ワイルドカード・パス違いに</td>
 <td>登録した URI ↔ code を届ける先</td>
-<td>攻撃者の URL や、オープンリダイレクタ経由で code が外へ出る</td>
+<td>攻撃者の URL や、オープンリダイレクタ経由で code が漏えいする</td>
 <td>認可サーバ（<a href="https://www.rfc-editor.org/rfc/rfc9700#section-2.1">RFC 9700 §2.1</a>、<a href="https://www.rfc-editor.org/rfc/rfc9700#section-4.1">§4.1</a>）</td>
 </tr>
 <tr>
-<td><code>/callback</code> の <code>state</code> を、削除・別セッションの値に</td>
+<td><code>/callback</code> の <code>state</code> を、削除・別セッションの値に（state で CSRF を防ぐクライアント）</td>
 <td>フローを始めたセッション ↔ code を受け取るセッション</td>
 <td>被害者が攻撃者のアカウントでログイン・連携する（CSRF）</td>
 <td>クライアント（<a href="https://www.rfc-editor.org/rfc/rfc9700#section-2.1">RFC 9700 §2.1</a>、<a href="https://www.rfc-editor.org/rfc/rfc9700#section-4.7">§4.7</a>）</td>
@@ -164,7 +164,7 @@ nav.book { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 
 <td><code>/callback</code> の <code>code</code> を、別のブラウザで得た code に（state は自分の値）</td>
 <td>認可リクエスト ↔ トークンリクエスト（PKCE）</td>
 <td>攻撃者のセッションが被害者として扱われる（認可コードの注入）</td>
-<td>PKCE なら認可サーバ、nonce（confidential な OIDC クライアントに限る）ならクライアント。どちらも使っていなければクライアントの不備（<a href="https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1">RFC 9700 §2.1.1</a>、<a href="https://www.rfc-editor.org/rfc/rfc9700#section-4.5">§4.5</a>）</td>
+<td>PKCE なら認可サーバ、nonce（confidential な OIDC クライアントに限る）ならクライアント。どちらも使っていなければクライアントの不備。PKCE を使っていて通ったら、先にクライアントが code_verifier をフローごとに作っているかを確かめる（3 節）（<a href="https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1">RFC 9700 §2.1.1</a>、<a href="https://www.rfc-editor.org/rfc/rfc9700#section-4.5">§4.5</a>）</td>
 </tr>
 <tr>
 <td>自分の <code>/authorize</code> から <code>code_challenge</code> を外し、その code を被害者に踏ませる</td>
@@ -175,11 +175,11 @@ nav.book { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 
 <tr>
 <td><code>/token</code> で同じ <code>code</code> を 2 回交換、<code>redirect_uri</code> を変えて交換</td>
 <td>code ↔ client・redirect_uri</td>
-<td>漏れた code が使える</td>
+<td>漏えいした code が使える</td>
 <td>認可サーバ（<a href="https://www.rfc-editor.org/rfc/rfc6749#section-4.1.2">RFC 6749 §4.1.2</a>、<a href="https://www.rfc-editor.org/rfc/rfc6749#section-4.1.3">§4.1.3</a>）</td>
 </tr>
 <tr>
-<td><code>/callback</code> の <code>iss</code> を、別の認可サーバの値に</td>
+<td><code>/callback</code> の <code>iss</code> を、別の認可サーバの値に（iss パラメータで mix-up 攻撃を防ぐクライアント）</td>
 <td>要求を送った認可サーバ ↔ 応答を返した認可サーバ</td>
 <td>mix-up 攻撃を防げない（攻撃が成立すると code が攻撃者の認可サーバへ送られる）</td>
 <td>クライアント（<a href="https://www.rfc-editor.org/rfc/rfc9700#section-2.1">RFC 9700 §2.1</a>、<a href="https://www.rfc-editor.org/rfc/rfc9207#section-2.4">RFC 9207 §2.4</a>）</td>
@@ -502,8 +502,8 @@ nav.book { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 
 </tr>
 <tr>
 <td>3. 認可レスポンス</td>
-<td>code はブラウザの URL で届くので、書き換えられ、漏れうる。<code>state</code> と <code>iss</code> を照合するのはクライアント</td>
-<td>state・iss の照合と code の漏れ口について、どこで止まれば正しく、止まらなければクライアントの不備かを判定できる</td>
+<td>code はブラウザの URL で届くので、書き換えられ、漏えいしうる。<code>state</code> と <code>iss</code> を照合するのはクライアント</td>
+<td>state・iss の照合と code の漏えい経路について、どこで止まれば正しく、止まらなければクライアントの不備かを判定できる</td>
 <td>3・5</td>
 </tr>
 <tr>
@@ -743,7 +743,7 @@ For confidential clients, the use of PKCE [RFC7636] is RECOMMENDED, as it provid
 </code></pre>
 <p>state の照合は通り、PKCE が無ければ攻撃者のセッションが被害者として扱われた。
 引用の 3 文目のとおり、トークンリクエストを送るのは正規のクライアントなので、client secret などのクライアント認証も注入を止めない。
-パブリッククライアントでは、漏れた code はそのままアクセストークンになる。PKCE が MUST になっているのはこのため。</p>
+パブリッククライアントでは、漏えいした code はそのままアクセストークンになる。PKCE が MUST になっているのはこのため。</p>
 <p>PKCE を使うクライアントで注入が通っても、すぐに認可サーバの不備とは決めない。クライアントが <code>code_verifier</code> をフロー間で使い回していれば、認可サーバが正しく照合しても通る。先に <code>code_verifier</code> がフローごとに変わるかを確かめる。
 nonce で注入を防いでよいのは、confidential な OIDC クライアントに限られる。</p>
 <p>出典：<a href="https://www.rfc-editor.org/rfc/rfc9700#section-2.1.1">RFC 9700 §2.1.1</a></p>
@@ -855,33 +855,33 @@ parameter is present if the &quot;redirect_uri&quot; parameter was included in t
 redirect_uri を /callback2 に変えて交換 → invalid_grant（redirect_uri が認可リクエストと違う）
 </code></pre>
 <p>2 回目の交換が拒否されるだけでは足りない。1 回目で得たアクセストークンが失効したかも、API を呼んで確かめる。失効は SHOULD（可能なら）なので、失効しなければ不備と断定せず、残るリスクとして書く。
-code が漏れて攻撃者が先に交換した場合、正規のクライアントの 2 回目の交換で、攻撃者のトークンを失効させられるため。
+code が漏えいして攻撃者が先に交換した場合、正規のクライアントの 2 回目の交換で、攻撃者のトークンを失効させられるため。
 ほかに、<code>code_verifier</code> を省略・1 文字変えた要求と、別の <code>client_id</code> での交換も拒否されるかを見る。</p>
 <p>3 つ目は code とトークンの推測。何回か認可を通して得た code やアクセストークンを並べ、桁数が少ない・連番に近いなど推測できそうなら、<code>/token</code> に code を総当たりで送り、制限で止まるかを見る。</p>
 <p>出典：<a href="https://www.rfc-editor.org/rfc/rfc6749#section-10.10">RFC 6749 §10.10</a></p>
 <pre><code>The probability of an attacker guessing generated tokens (and other credentials not intended for handling by end-users) MUST be less than or equal to 2^(-128) and SHOULD be less than or equal to 2^(-160).
 </code></pre>
-<h2>5. code の漏洩と mix-up 攻撃</h2>
+<h2>5. code の漏えいと mix-up 攻撃</h2>
 <p>3 節の注入は、被害者の code が攻撃者の手に渡ることが前提。
 code はクエリで <code>/callback</code> に届くので、そのページから外部のサイトへリクエストが出ると、Referer で外部へ送られうる。</p>
 <p>出典：<a href="https://www.rfc-editor.org/rfc/rfc9700#section-4.2.4">RFC 9700 §4.2.4</a></p>
 <pre><code>The page rendered as a result of the OAuth authorization response and the authorization endpoint SHOULD NOT include third-party resources or links to external sites.
 </code></pre>
 <p>ただし、現在のブラウザの既定の Referrer Policy では、別オリジンへの Referer にクエリは載らない。
-漏れるのは、<code>Referrer-Policy: unsafe-url</code> や <code>no-referrer-when-downgrade</code> のように既定を緩めたページに、外部リンクや外部リソースがあるとき。ページ全体が既定でも、<code>&lt;a&gt;</code> や <code>&lt;img&gt;</code> の <code>referrerpolicy</code> 属性で要素ごとに緩められる。
+漏えいするのは、<code>Referrer-Policy: unsafe-url</code> や <code>no-referrer-when-downgrade</code> のように既定を緩めたページに、外部リンクや外部リソースがあるとき。ページ全体が既定でも、<code>&lt;a&gt;</code> や <code>&lt;img&gt;</code> の <code>referrerpolicy</code> 属性で要素ごとに緩められる。
 外部の JavaScript を読み込むページでは、そのスクリプトが Referer を介さず <code>location.href</code> から code を読める。</p>
 <p>出典：<a href="https://zenn.dev/hidebike712/books/oauth-attacks-and-bcp/viewer/credential-leakage-via-referer-headers">Zenn の本 3 章</a></p>
 <pre><code>主要なモダンブラウザでデフォルトとなっている strict-origin-when-cross-origin では、cross-origin のリクエスト内の Referer ヘッダーに参照元 URL のパスやクエリは含まれないため、本攻撃は成立しない点に注意してください。
 攻撃者が S_VIC を取得できてしまうと、state による CSRF 保護は失われ、攻撃者は CSRF を実行できる可能性があります。
 </code></pre>
-<p>診断では、クライアントの <code>/callback</code> とその転送先のページだけでなく、認可サーバの同意画面も見る。同意画面の URL には state が入るので、そこから漏れると 2 文目のとおり state が役に立たなくなる。
+<p>診断では、クライアントの <code>/callback</code> とその転送先のページだけでなく、認可サーバの同意画面も見る。同意画面の URL には state が入るので、そこから漏えいすると 2 文目のとおり state が役に立たなくなる。
 見るのは、レスポンスヘッダー・<code>&lt;meta name=&quot;referrer&quot;&gt;</code>・要素の <code>referrerpolicy</code> 属性の Referrer Policy、外部リンク・外部リソース・外部スクリプトの有無、アクセスログや解析ツールに code 付きの URL を残すかの 3 つ。</p>
 <p>code はブラウザの履歴にも残る。端末を触れる攻撃者に対しては、4 節の code の 1 回限りと PKCE が効く。
 アクセストークンを URL のクエリに載せて API を呼んでいたら、それ自体を指摘する。</p>
 <p>出典：<a href="https://www.rfc-editor.org/rfc/rfc9700#section-4.3.2">RFC 9700 §4.3.2</a></p>
 <pre><code>Clients MUST NOT pass access tokens in a URI query parameter in the way described in Section 2.3 of [RFC6750].
 </code></pre>
-<p><code>response_mode=form_post</code> を使うクライアントは、認可レスポンスが URL に載らないので、Referer と履歴からは漏れない。
+<p><code>response_mode=form_post</code> を使うクライアントは、認可レスポンスが URL に載らないので、Referer と履歴からは漏えいしない。
 その代わり、認可サーバからのクロスサイトの POST で <code>/callback</code> が呼ばれるので、セッション Cookie が <code>SameSite=Lax</code> だと送られない。</p>
 <p>出典：<a href="https://zenn.dev/hidebike712/books/oauth-attacks-and-bcp/viewer/credential-leakage-via-browser-history">Zenn の本 4 章</a> の脚注</p>
 <pre><code>コールバック処理が SameSite=Lax のセッション Cookie に依存している場合、その Cookie はこの POST では送信されず、ユーザーのセッションを復元できないために state の検証などに失敗する可能性があります。
@@ -921,7 +921,7 @@ code はクエリで <code>/callback</code> に届くので、そのページか
 </code></pre>
 <p>iss を見ないクライアントでは、ログインは失敗したが、code は攻撃者の認可サーバに届いた。利用者から見るとただのログイン失敗なので、画面の結果だけで判定しない。
 iss はトークンリクエストの前に確かめる必要がある。トークンレスポンスの ID トークンの <code>iss</code> で確かめても、code はもう送った後になる。</p>
-<p>iss を書き換える確認リクエストは、対策が効いているかを見るもので、攻撃の再現ではない。通常のフローで iss だけを書き換えても、クライアントはフローを始めた認可サーバへ code を送るので、code は漏れない。</p>
+<p>iss を書き換える確認リクエストは、対策が効いているかを見るもので、攻撃の再現ではない。通常のフローで iss だけを書き換えても、クライアントはフローを始めた認可サーバへ code を送るので、code は漏えいしない。</p>
 <p>まず、クライアントがどの対策を使っているかを確かめる。RFC 9700 が挙げるのは、iss パラメータ、ID トークンや JARM の iss、それらが使えないときの認可サーバごとの redirect URI。</p>
 <p>出典：<a href="https://www.rfc-editor.org/rfc/rfc9700#section-2.1">RFC 9700 §2.1</a></p>
 <pre><code>use an alternative countermeasure based on an iss value in the authorization response (such as the iss claim in the ID Token in [OpenID.Core] or in [OpenID.JARM] responses), processing that value as described in [RFC9207].
@@ -931,7 +931,12 @@ In the absence of these options, clients MAY instead use distinct redirection UR
 <p>出典：<a href="https://www.rfc-editor.org/rfc/rfc9207#section-2.4">RFC 9207 §2.4</a></p>
 <pre><code>Clients MUST reject authorization responses without the iss parameter from authorization servers that do support the parameter according to the client&#39;s configuration.
 </code></pre>
-<p>認可レスポンスに <code>iss</code> が無い認可サーバでは、認可サーバごとに redirect URI を分ける対策がある。ただし、攻撃者が正規の認可サーバに自分のクライアントを登録し、その redirect URI に被害クライアントの別の認可サーバ用の URI を使えると、突破される。</p>
+<p>認可レスポンスに <code>iss</code> が無い認可サーバでは、認可サーバごとに redirect URI を分ける対策がある。
+この対策を使うクライアントには、認可サーバ A で始めたフローの認可レスポンスを、B 用の redirect URI に送る。フローを始めた認可サーバの URI と応答を受けた URI が違うので、クライアントはトークンリクエストを送る前に止める。</p>
+<p>出典：<a href="https://www.rfc-editor.org/rfc/rfc9700#section-4.4.2.2">RFC 9700 §4.4.2.2</a></p>
+<pre><code>Clients MUST check that the authorization response was received from the correct issuer by comparing the distinct redirection URI for the issuer to the URI where the authorization response was received on.
+</code></pre>
+<p>ただし、攻撃者が正規の認可サーバに自分のクライアントを登録し、その redirect URI に被害クライアントの別の認可サーバ用の URI を使えると、突破される。</p>
 <p>出典：<a href="https://zenn.dev/hidebike712/books/oauth-attacks-and-bcp/viewer/mixup-attack">Zenn の本 11 章</a></p>
 <pre><code>攻撃者が H-AS に悪意のあるクライアント (クライアント ID = CID_EVIL) を登録し、そのクライアントが https://client.example.com/cb/a-as をリダイレクト URI として使用する場合、本対抗策は突破されてしまいます。
 </code></pre>
@@ -978,7 +983,7 @@ If a nonce value was sent in the Authentication Request, a nonce Claim MUST be p
 <p>出典：<a href="https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation">OpenID Connect Core 1.0 §3.1.3.7</a></p>
 <pre><code>The ID Token MUST be rejected if the ID Token does not list the Client as a valid audience, or if it contains additional audiences not trusted by the Client.
 </code></pre>
-<p>nonce は 1 回限りの値なので、照合に使い終えた nonce の ID トークンが再び届いたときに受け入れないかも見る。認可コードフローでは ID トークンが裏の通信で届くので、テスト用の IdP で、新しい code の交換に以前の ID トークンを返させて試す。</p>
+<p>nonce は 1 回限りの値なので、照合に使い終えた nonce をセッションから消しているかを、実装で確かめる。</p>
 <p>出典：<a href="https://www.rfc-editor.org/rfc/rfc9700#section-4.5.3.2">RFC 9700 §4.5.3.2</a></p>
 <pre><code>The nonce value is one-time use and is created by the client.
 </code></pre>
@@ -989,10 +994,10 @@ If a nonce value was sent in the Authentication Request, a nonce Claim MUST be p
 <li><input disabled="" type="checkbox"> どの登録値とも一致しないよう <code>redirect_uri</code> をサブドメイン・パス・クエリ・<code>..</code> 違い、ホスト名の後ろを伸ばしたもの、登録値をクエリに含めたものにした認可リクエストが、エラー画面で止まるか</li>
 <li><input disabled="" type="checkbox"> 登録値にワイルドカードがあれば、<code>*</code> の位置に <code>/</code> を含む値（<code>https://attacker.example/.app.example/callback</code>）を入れても止まるか</li>
 <li><input disabled="" type="checkbox"> ループバック IP の redirect URI でポートだけが違う要求は、受理されるのが正しい（報告しない）</li>
-<li><input disabled="" type="checkbox"> <code>code_verifier</code> を省略・改ざんしたトークンリクエストが拒否されるか</li>
+<li><input disabled="" type="checkbox"> <code>code_challenge</code> を付けて取った code で、<code>code_verifier</code> を省略・改ざんしたトークンリクエストが拒否されるか</li>
 <li><input disabled="" type="checkbox"> <code>code_challenge</code> を外した認可リクエストが拒否されるか。受理されるなら、その code を <code>code_verifier</code> 付きで交換できないか</li>
 <li><input disabled="" type="checkbox"> 同じ code の 2 回目の交換が拒否されるか（MUST）。1 回目のアクセストークンも失効するか（SHOULD。失効しなければ残るリスクとして書く）</li>
-<li><input disabled="" type="checkbox"> 別の <code>client_id</code>、認可リクエストと違う <code>redirect_uri</code>、<code>redirect_uri</code> を省いた要求での交換が拒否されるか</li>
+<li><input disabled="" type="checkbox"> 別の <code>client_id</code>、認可リクエストと違う <code>redirect_uri</code> での交換が拒否されるか。認可リクエストに <code>redirect_uri</code> を含めたなら、それを省いた交換も拒否されるか</li>
 <li><input disabled="" type="checkbox"> client secret などを持つクライアントの code を、クライアント認証を省いて、または誤った認証情報で交換できないか</li>
 <li><input disabled="" type="checkbox"> code・アクセストークンが推測できない値か。推測できそうなら、<code>/token</code> への code の総当たりが止まるか</li>
 <li><input disabled="" type="checkbox"> <code>response_type=code</code> のクライアントの認可リクエストを <code>token</code> に書き換えても、アクセストークンを返さないか（返したら、登録で許しているかを確かめる）</li>
@@ -1007,11 +1012,14 @@ If a nonce value was sent in the Authentication Request, a nonce Claim MUST be p
 <li><input disabled="" type="checkbox"> ブラウザ A でクライアントに届く前に取り出した code を、ブラウザ B のフローの認可レスポンスに差し替えて送り、B が A のユーザーにならないか（PKCE を使うクライアントでも試す）</li>
 <li><input disabled="" type="checkbox"> パブリッククライアントなら、認可リクエストに <code>code_challenge</code> を必ず付けているか。PKCE を使うなら <code>code_challenge_method=S256</code> か</li>
 <li><input disabled="" type="checkbox"> nonce で注入を防ぐなら、トークンレスポンスの ID トークンの nonce を照合し、照合が済むまでアクセストークンを使っていないか</li>
-<li><input disabled="" type="checkbox"> OIDC なら、ID トークンの <code>iss</code>・<code>aud</code>（自分の client_id を含み、信頼していない audience を含まないか）・<code>exp</code> と、認可コードフローで送った場合の <code>nonce</code> を検証しているか（テスト用の IdP か実装で確かめる）。署名の検証は、ブラウザを経由して届いた ID トークンでだけ必須</li>
+<li><input disabled="" type="checkbox"> OIDC なら、ID トークンの <code>iss</code>・<code>aud</code>（自分の client_id を含み、信頼していない audience を含まないか）・<code>exp</code> と、認可コードフローで送った場合の <code>nonce</code> を検証しているか（テスト用の IdP か実装で確かめる）</li>
+<li><input disabled="" type="checkbox"> ID トークンの署名を検証していないなら、それが認可レスポンスで届いた ID トークンではないか（トークンエンドポイントから直接受け取った ID トークンでは、署名の検証を省いてよい）</li>
 <li><input disabled="" type="checkbox"> UserInfo を使うなら、その <code>sub</code> が ID トークンの <code>sub</code> と一致するかを照合しているか</li>
 <li><input disabled="" type="checkbox"> <code>/callback</code> とその転送先のページの Referrer Policy（ヘッダー・meta・要素の属性）が既定より緩くないか、外部リンク・外部リソース・外部スクリプトが無いか、ログに code を残さないか</li>
 <li><input disabled="" type="checkbox"> アクセストークンを URL のクエリに載せていないか</li>
-<li><input disabled="" type="checkbox"> 複数の認可サーバを使うなら、mix-up 攻撃の対策（iss パラメータ・ID トークンや JARM の iss・認可サーバごとの redirect URI）のどれを使っているか。iss パラメータなら、認可レスポンスの <code>iss</code> を別の値にしたとき、トークンリクエストを送らずに止まるか。認可サーバが <code>iss</code> に対応している（メタデータの <code>authorization_response_iss_parameter_supported</code>）なら、<code>iss</code> を削除しても止まるか</li>
+<li><input disabled="" type="checkbox"> 複数の認可サーバを使うなら、mix-up 攻撃の対策（iss パラメータ・ID トークンや JARM の iss・認可サーバごとの redirect URI）のどれを使っているか</li>
+<li><input disabled="" type="checkbox"> iss パラメータで防ぐなら、認可レスポンスの <code>iss</code> を別の値にしたとき、トークンリクエストを送らずに止まるか。認可サーバが <code>iss</code> に対応している（メタデータの <code>authorization_response_iss_parameter_supported</code>）なら、<code>iss</code> を削除しても止まるか</li>
+<li><input disabled="" type="checkbox"> 認可サーバごとの redirect URI で防ぐなら、認可サーバ A で始めたフローの認可レスポンスを B 用の redirect URI に送ったとき、トークンリクエストを送らずに止まるか</li>
 <li><input disabled="" type="checkbox"> <code>response_type</code> に <code>token</code> を含む要求（<code>token</code>、<code>id_token token</code>）を使っていないか。使っているなら、アクセストークンを差し替えて別のユーザーとしてログインできないか。OIDC なら nonce を必ず送り、ID トークンの nonce と <code>at_hash</code> を照合しているか</li>
 </ul>
 <h2>8. 理解度チェック</h2>
@@ -1030,7 +1038,7 @@ If a nonce value was sent in the Authentication Request, a nonce Claim MUST be p
 </details><ol start="4">
 <li>「Google でログイン」と「独自の IdP でログイン」があるアプリで、認可レスポンスの <code>iss</code> を別の値にしたら、画面にはログイン失敗と出た。安全と判定してよいか。</li>
 </ol>
-<details><summary>答え</summary><p>画面だけでは判定しない。ログインが失敗しても、クライアントが code を別の認可サーバのトークンエンドポイントへ送っていれば、code は漏れている。ログイン失敗には、トークンリクエストの前に止まった場合と、code を送った後に失敗した場合がある。5 節の攻撃の再現でも、iss を見ないクライアントはログインに失敗したが、攻撃者の認可サーバに code が 1 個届いた。クライアントの外向きの通信か実装で、トークンリクエストを送る前に止まったかを確かめる。</p>
+<details><summary>答え</summary><p>画面だけでは判定しない。ログインが失敗しても、クライアントが code を別の認可サーバのトークンエンドポイントへ送っていれば、code は漏えいしている。ログイン失敗には、トークンリクエストの前に止まった場合と、code を送った後に失敗した場合がある。5 節の攻撃の再現でも、iss を見ないクライアントはログインに失敗したが、攻撃者の認可サーバに code が 1 個届いた。クライアントの外向きの通信か実装で、トークンリクエストを送る前に止まったかを確かめる。</p>
 </details><ol start="5">
 <li>クライアントは state を使わず、PKCE（S256）を正しく実装している。CSRF は報告しなくてよいか。</li>
 </ol>

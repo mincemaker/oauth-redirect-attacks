@@ -270,6 +270,13 @@
       ]
     },
     {
+      "name": "rfc-mixup-redirect",
+      "cmd": "node examples/rfc-quote.mjs sources/rfc9700.txt \"Clients MUST check that the authorization response was received\"",
+      "expect": [
+        "comparing the distinct redirection URI for the issuer to the URI where the authorization response was received on."
+      ]
+    },
+    {
       "name": "oidc-aud",
       "cmd": "node examples/rfc-quote.mjs sources/oidc-core-1_0.txt \"The ID Token MUST be rejected if the ID Token does not list\"",
       "expect": [
