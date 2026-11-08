@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja" data-register="blueprint">
+<head><title>OAuth の診断観点</title><link rel="stylesheet" href="kit.css" data-ve-kit>
+<style>
+h1{font-size:var(--t-h2)} .scope{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-5)} .scope>div{border-top:1px solid var(--border-bright);padding-top:var(--s-3)} td:first-child{white-space:nowrap} td{vertical-align:top} code{overflow-wrap:anywhere} .checks{display:grid;grid-template-columns:1fr 1fr;gap:var(--s-5)} .checks h3{margin-top:var(--s-3)} .checks label{display:block;padding:var(--s-2) 0;border-bottom:1px solid var(--border);font-size:var(--t-small)} input{accent-color:var(--accent)} .case p{font-size:var(--t-small)} @media(max-width:700px){.scope,.checks{grid-template-columns:1fr}}
+</style></head>
+<body>
+<nav class="ve-toc" aria-label="診断観点"><div><a href="#bindings">照合の担当</a><a href="#requests">確認リクエスト</a><a href="#judgment">判定の落とし穴</a><a href="#field">現場のチェック</a></div><span class="pos"></span></nav>
+<main>
+<header><p class="eyebrow">OAuth / OIDC · 認可コードフロー</p><h1>値を差し替え、拒否する場所を確かめる</h1><p class="lead">変更する値、どこで拒否されるべきか、誰が照合するかを対応づけると、診断漏れや、不備のある側を取り違える誤りを減らせます。</p></header>
+<section id="bindings"><h2>値ごとに照合する側が違う</h2>
+<figure><div class="frame"><svg class="ve-svg" viewBox="0 0 1020 390" role="img" aria-label="redirect_uri と PKCE は認可サーバ、state と認可応答の iss はクライアントが照合する">
+<rect class="ve-bnd" x="760" y="20" width="235" height="350"/><text class="ve-bnd-t" x="780" y="45">照合する側</text>
+<path class="ve-e" d="M245 100H340"/><text class="ve-el" x="292" y="79">届け先を制限</text><path class="ve-e" d="M650 100H780"/>
+<path class="ve-e" d="M245 175H340"/><text class="ve-el" x="292" y="154">紐付ける</text><path class="ve-e" d="M650 175H780"/>
+<path class="ve-e is-hot" d="M245 250H340"/><text class="ve-el" x="292" y="229">フローを照合</text><path class="ve-e is-hot" d="M650 250H780"/>
+<path class="ve-e" d="M245 325H340"/><text class="ve-el" x="292" y="304">発行元を照合</text><path class="ve-e" d="M650 325H780"/>
+<g class="ve-n"><rect class="sh" x="20" y="77" width="225" height="46"/><text x="132" y="100">redirect_uri</text></g>
+<g class="ve-n"><rect class="sh" x="20" y="152" width="225" height="46"/><text x="132" y="175">state</text></g>
+<g class="ve-n is-key"><rect class="sh" x="20" y="227" width="225" height="46"/><text x="132" y="250">PKCE / code_verifier</text></g>
+<g class="ve-n"><rect class="sh" x="20" y="302" width="225" height="46"/><text x="132" y="325">認可応答の iss</text></g>
+<g class="ve-n"><rect class="sh" x="340" y="77" width="310" height="46"/><text x="495" y="100">登録 URI ↔ code の配送先</text></g>
+<g class="ve-n"><rect class="sh" x="340" y="152" width="310" height="46"/><text x="495" y="175">開始セッション ↔ 応答先</text></g>
+<g class="ve-n"><rect class="sh" x="340" y="227" width="310" height="46"/><text x="495" y="250">認可要求 ↔ トークン要求</text></g>
+<g class="ve-n"><rect class="sh" x="340" y="302" width="310" height="46"/><text x="495" y="325">選んだサーバ ↔ 応答元</text></g>
+<g class="ve-n"><rect class="sh" x="780" y="77" width="195" height="46"/><text x="877" y="100">認可サーバ</text></g>
+<g class="ve-n"><rect class="sh" x="780" y="152" width="195" height="46"/><text x="877" y="175">クライアント</text></g>
+<g class="ve-n"><rect class="sh" x="780" y="227" width="195" height="46"/><text x="877" y="250">認可サーバ</text></g>
+<g class="ve-n"><rect class="sh" x="780" y="302" width="195" height="46"/><text x="877" y="325">クライアント</text></g>
+</svg></div><figcaption>state はセッションを照合しますが、別フローの code の注入を止めるのは PKCE または条件を満たす OIDC の nonce です。</figcaption></figure>
+<div class="scope"><div><h3>認可サーバを診断する</h3><p><code>/authorize</code> と <code>/token</code> の検証を確認します。外部 IdP への試験は、合意した診断範囲内に限定します。</p></div><div><h3>クライアントを診断する</h3><p><code>/callback</code>、セッション管理、トークン使用前の検証を確認します。PKCE があっても verifier の使い回しを別途確認します。</p></div></div>
+</section>
+<section id="requests"><h2>リクエストを選び、値を一つだけ変える</h2>
+<figure><div class="ve-table"><table><thead><tr><th>送信先・観点</th><th>変更する値・操作</th><th>期待する結果と確認箇所</th></tr></thead><tbody>
+<tr><td>認可サーバ<br>配送先</td><td><code>/authorize</code> の <code>redirect_uri</code> を登録外へ。ホスト名の末尾への文字列の追加、サブドメイン、パス、クエリ、<code>..</code>、大文字小文字を変更。ワイルドカードには <code>/</code> を含む値も試す。</td><td>登録 URI と完全一致しなければ拒否。無効な URI にブラウザを戻さない。ネイティブアプリのループバック IP はポート違いを許容。</td></tr>
+<tr><td>クライアント<br>CSRF</td><td>A の未使用 code 付き callback を B に送る。B でフローを始めていない状態と、始めてから完了するまでの状態の両方で試す。state で防ぐ構成では削除・改ざん・別セッションの値も試す。</td><td>B が A のアカウントでログイン・連携しない。state が無いことだけでは不備と断定しない。PKCE / nonce による防御も確認。</td></tr>
+<tr><td>クライアント＋認可サーバ<br>code 注入</td><td>A の code を callback 到着前に取り出す。B の認可応答の code だけを差し替え、state は B のまま送る。</td><td>B が A のユーザーとしてログインしない。通ったら、まず verifier のフロー間の使い回しを確認。PKCE の照合不備とクライアントの生成不備を切り分ける。</td></tr>
+<tr><td>認可サーバ<br>PKCE 検証</td><td>challenge 付きで発行した code を、verifier の省略・一文字改変で交換。パブリッククライアントでは直接交換も試す。</td><td><code>/token</code> で拒否。正常なクライアント認証と未使用 code を使い、別のエラーによる拒否と区別。</td></tr>
+<tr><td>認可サーバ<br>PKCE ダウングレード</td><td>認可要求から challenge と method を外す。code が発行されたら、verifier 付きで交換する。</td><td>認可時または交換時に拒否。両方通るなら認可サーバの不備。PKCE だけで CSRF を防ぐクライアントでは攻撃成立も確認。</td></tr>
+<tr><td>認可サーバ<br>code と交換条件の照合</td><td>別の <code>client_id</code>、異なる <code>redirect_uri</code>、認可時に指定した URI の省略、クライアント認証の省略・改ざんで交換。</td><td>各試験で拒否。認証が必要なクライアントで、認証の省略・改ざんを確認。各試験に別の未使用 code を用意。</td></tr>
+<tr><td>認可サーバ<br>code 再利用</td><td>同じ code を再交換し、最初のトークンで API を呼ぶ。</td><td>再交換の拒否は MUST。発行済みトークンの失効は SHOULD。失効しない場合は、不備と断定せず残るリスクとして報告する。</td></tr>
+<tr><td>クライアント<br>mix-up</td><td>採用している対策に合わせ、応答の <code>iss</code> を改ざん・削除。認可サーバごとに URI を分けている場合は、サーバ A で始めたフローの応答をサーバ B 用の callback へ送る。</td><td>トークン要求の前に停止。クライアントの設定で認可サーバが iss に対応していると分かっている場合は、iss を削除した応答も拒否する。画面ではなく外向き通信を確認。</td></tr>
+<tr><td>クライアント<br>OIDC</td><td>正しく署名したテスト用 ID トークンで <code>iss / aud / exp / nonce</code> を個別に変更。難しければ実装を確認。</td><td>検証失敗ならログイン・連携を完了しない。nonce で注入を防ぐ場合、トークン応答の ID トークンを確認するまでアクセストークンを使わない。</td></tr>
+<tr><td>双方<br>漏えい</td><td>同意画面、callback と転送先の Referrer Policy、外部通信、JavaScript、履歴、アクセスログ・解析を確認。</td><td>code・state が外部に渡らない。外部 JavaScript は Referer に関係なく URL を読める。アクセストークンを URL のクエリに載せない。</td></tr>
+</tbody></table></div><figcaption>拒否されたという結果だけでなく、狙った検証が拒否したことを確認します。</figcaption></figure>
+</section>
+<section id="judgment"><h2>画面の成功・失敗だけで判定しない</h2>
+<figure><div class="cases">
+<div class="case" data-st="warn"><span class="chip warn">state は通る</span><h3>認可コードの注入</h3><svg class="ve-mini" viewBox="0 0 280 150" aria-label="B の state と A の code が同時に届く"><g class="ve-n"><rect class="sh" x="15" y="10" width="250" height="40"/><text x="140" y="30">B の state ＋ A の code</text></g><path class="ve-e" d="M140 50V105"/><text class="ve-el r" x="155" y="82">state を照合</text><text class="ve-tag" text-anchor="middle" x="140" y="130">一致しても code は別フロー</text></svg><p>PKCE、または追加条件を満たす confidential OIDC クライアントの nonce で防ぎます。client secret だけでは止まりません。</p></div>
+<div class="case" data-st="risk"><span class="chip risk">失敗画面でも漏えい</span><h3>mix-up 攻撃</h3><svg class="ve-mini" viewBox="0 0 280 150" aria-label="攻撃者の認可サーバへ code を送ってから失敗する"><g class="ve-n"><rect class="sh" x="15" y="10" width="250" height="40"/><text x="140" y="30">クライアント</text></g><path class="ve-e is-st" d="M140 50V105"/><text class="ve-el r" x="155" y="82">code を送る</text><text class="ve-tag" text-anchor="middle" x="140" y="130">攻撃者の認可サーバ → 失敗</text></svg><p>iss の改ざん試験は対策を確認するものであり、mix-up の再現そのものではありません。code を送る前に処理が止まることを確認します。</p></div>
+<div class="case" data-st="ok"><span class="chip ok">受理が正しい</span><h3>ループバック IP のポート</h3><svg class="ve-mini" viewBox="0 0 280 150" aria-label="ループバック IP のポート差は許容される"><g class="ve-n"><rect class="sh" x="15" y="10" width="250" height="40"/><text x="140" y="30">127.0.0.1 / 同じパス</text></g><path class="ve-e" d="M140 50V105"/><text class="ve-el r" x="155" y="82">ポートを変える</text><text class="ve-tag" text-anchor="middle" x="140" y="130">ネイティブアプリなら許容</text></svg><p>任意のホストやパスまで許す例外ではありません。どの登録 URI とも一致しない要求で判断します。</p></div>
+</div><figcaption>判定は最終画面ではなく、アカウントの状態・code の送信先・停止した通信で行います。</figcaption></figure>
+<details><summary>ID トークンの署名を検証していない場合</summary><p>認可コードフローでトークンエンドポイントから直接取得する ID トークンは、TLS のサーバー検証で発行者の検証を代替できるため、署名を検証しないことだけでは不備にしません。ブラウザ経由の ID トークンには署名検証が必要です。iss・aud・exp と、送信した nonce の照合は別途必要です。</p></details>
+</section>
+<section id="field"><h2>試験前の準備と構成ごとの追加観点</h2>
+<div class="checks"><div><h3>試験前にそろえる</h3>
+<label><input type="checkbox"> 外部 IdP を含む診断範囲と、試験で許可されたリクエスト数や頻度を確認</label>
+<label><input type="checkbox"> 自分が管理するアカウントと独立したブラウザ A / B を準備</label>
+<label><input type="checkbox"> 正常系の通信を採取し、試験ごとに未使用 code を取得</label>
+<label><input type="checkbox"> code の期限切れや再利用、クライアント認証の失敗による拒否を、目的の検証による拒否と区別</label>
+<label><input type="checkbox"> セッション固定と state・nonce・verifier の使い回しを確認</label>
+</div><div><h3>構成を見て追加する</h3>
+<label><input type="checkbox"> PKCE は S256。パブリッククライアントで必ず使用</label>
+<label><input type="checkbox"> form_post でも state 等の対策を維持しているか確認。SameSite によって Cookie が送られない場合の処理も確認</label>
+<label><input type="checkbox"> OIDC の aud に信頼していない audience が含まれないか確認。使用済み nonce を破棄しているかも確認</label>
+<label><input type="checkbox"> UserInfo の sub と ID トークンの sub を照合</label>
+<label><input type="checkbox"> code・トークンの推測可能性と、許可範囲内での試行制限を確認</label>
+<label><input type="checkbox"> response_type=token への変更でアクセストークンが発行されるなら、そのクライアントの登録で許可されているか確認</label>
+<label><input type="checkbox"> Implicit Grant を使う既存のクライアントでは、state を維持し、アクセストークンだけを差し替えて試験。OIDC の response_type=id_token token では、元の ID トークンを変えずに at_hash の照合を確認。nonce の送信・照合も別途確認</label>
+</div></div>
+<p>報告には、診断対象の構成、変更したリクエスト、どこで拒否されるべきか、実際の通信やログイン・連携の結果、どちらの不備かを記録します。Implicit Grant の利用や使わないグラントの許可については、値の検証の不備と構成上のリスクを分けて報告します。</p>
+</section>
+<section class="sources" aria-label="参照元"><h2>参照元と範囲</h2><p>このページはローカル資料の診断観点を再整理したものです。実環境での試験結果ではありません。チェックボックスの状態は保存しません。</p><p><a href="../README.md">README.md</a> の 0・2〜7 節を参照しました。再現モデルは <code>examples/flow.mjs</code>。リソースサーバ、リフレッシュトークン、ネイティブアプリ固有の横取りは対象外です。</p></section>
+</main></body></html>
